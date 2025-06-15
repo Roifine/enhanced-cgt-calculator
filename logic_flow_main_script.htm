@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced CGT Calculator - Logic Flow</title>
+    <style>
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .flow-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 5px solid #3498db;
+        }
+        
+        .step-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .step-number {
+            background: #3498db;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+        
+        .step-content {
+            margin-left: 60px;
+        }
+        
+        .step-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .step-description {
+            color: #5a6c7d;
+            line-height: 1.6;
+        }
+        
+        .decision-box {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .process-box {
+            background: #d1f2eb;
+            border: 2px solid #7dcea0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .optimization-box {
+            background: #e8f4f8;
+            border: 2px solid #5dade2;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        
+        .code-snippet {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .helper-method {
+            background: #f39c12;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+        
+        .data-flow {
+            display: grid;
+            grid-template-columns: 1fr 50px 1fr;
+            gap: 20px;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .data-input, .data-output {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .data-arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 Enhanced CGT Calculator - Logic Flow</h1>
+        
+        <!-- Overview Section -->
+        <div class="flow-section">
+            <h2>📋 System Overview</h2>
+            <div class="data-flow">
+                <div class="data-input">
+                    <strong>INPUTS</strong><br>
+                    • Sales DataFrame (16 transactions)<br>
+                    • Cost Basis Dictionary (29 symbols)<br>
+                    • Strategy ("tax_optimal" or "fifo")
+                </div>
+                <div class="data-arrow">→</div>
+                <div class="data-output">
+                    <strong>OUTPUTS</strong><br>
+                    • CGT DataFrame (detailed calculations)<br>
+                    • Updated Cost Basis (remaining parcels)<br>
+                    • Warnings List<br>
+                    • Processing Logs
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Processing Flow -->
+        <div class="flow-section">
+            <h2>🔄 Main Processing Loop</h2>
+            
+            <div class="step-box">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Initialize & Setup</div>
+                    <div class="step-description">
+                        • Create working copy of cost basis dictionary<br>
+                        • Initialize empty CGT records list<br>
+                        • Set up logging and warnings tracking
+                    </div>
+                    <div class="code-snippet">
+working_cost_basis = copy.deepcopy(cost_basis_dict)
+cgt_records = []
+warnings_list = []</div>
+                </div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="step-box">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Iterate Through Each Sale</div>
+                    <div class="step-description">
+                        • Loop through sales DataFrame row by row<br>
+                        • Extract sale details (symbol, date, quantity, price)<br>
+                        • Convert data types and validate
+                    </div>
+                    <div class="code-snippet">
+for idx, sale in sales_df.iterrows():
+    symbol = sale['Symbol']
+    sale_date = pd.to_datetime(sale['Trade Date'])
+    units_sold = float(sale['Quantity'])
+    sale_price_usd = float(sale['Price (USD)'])</div>
+                </div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="decision-box">
+                <strong>DECISION:</strong> Does symbol have cost basis?<br>
+                If NO → Add warning and skip<br>
+                If YES → Continue to optimization
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="step-box">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Strategy Selection</div>
+                    <div class="step-description">
+                        Choose optimization strategy based on user selection
+                    </div>
+                    <div class="decision-box">
+                        <strong>IF strategy == "tax_optimal":</strong><br>
+                        Call <span class="helper-method">optimize_sale_for_cgt()</span><br><br>
+                        <strong>ELSE (FIFO):</strong><br>
+                        Call <span class="helper-method">_fifo_selection()</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tax Optimization Deep Dive -->
+        <div class="flow-section">
+            <h2>🎯 Tax Optimization Logic (Core Algorithm)</h2>
+            
+            <div class="optimization-box">
+                <h3>Phase 1: Analyze Available Parcels</h3>
+                <div class="step-description">
+                    • Calculate days held for each parcel<br>
+                    • Determine if long-term (>365 days) or short-term<br>
+                    • Calculate cost per unit (including proportional commission)<br>
+                    • Enrich parcel data with optimization metadata
+                </div>
+                <div class="code-snippet">
+purchase_date = parse_date(parcel['date'])
+days_held = (sale_date - purchase_date).days
+is_long_term = days_held >= 365
+cost_per_unit = price + (commission / units)</div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="optimization-box">
+                <h3>Phase 2: Separate & Sort Parcels</h3>
+                <div class="step-description">
+                    • <strong>Separate:</strong> Long-term parcels vs Short-term parcels<br>
+                    • <strong>Sort:</strong> Within each group, highest cost basis first<br>
+                    • <strong>Rationale:</strong> Minimize taxable gains by using expensive parcels first
+                </div>
+                <div class="code-snippet">
+long_term_parcels = [p for p in parcels if p['is_long_term']]
+short_term_parcels = [p for p in parcels if not p['is_long_term']]
+
+# Sort by cost per unit (highest first)
+long_term_parcels.sort(key=lambda x: x['cost_per_unit'], reverse=True)
+short_term_parcels.sort(key=lambda x: x['cost_per_unit'], reverse=True)</div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="optimization-box">
+                <h3>Phase 3: Smart Parcel Selection</h3>
+                <div class="step-description">
+                    <strong>Priority Order:</strong><br>
+                    1. <strong>Long-term parcels first</strong> (50% CGT discount)<br>
+                    2. <strong>Highest cost basis within category</strong> (minimize gains)<br>
+                    3. <strong>Handle partial parcels</strong> (proportional commission split)
+                </div>
+                
+                <div class="process-box">
+                    <h4>🔄 Selection Algorithm:</h4>
+                    <strong>Step 1:</strong> Consume long-term parcels (highest cost first)<br>
+                    <strong>Step 2:</strong> If still need units, consume short-term parcels<br>
+                    <strong>Step 3:</strong> Split parcels if needed (partial consumption)<br>
+                    <strong>Step 4:</strong> Track remaining units in each parcel
+                </div>
+            </div>
+        </div>
+        
+        <!-- CGT Calculation Details -->
+        <div class="flow-section">
+            <h2>💰 CGT Calculation Logic</h2>
+            
+            <div class="step-box">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Per-Parcel CGT Calculation</div>
+                    <div class="step-description">
+                        For each selected parcel portion, calculate:
+                    </div>
+                    <span class="helper-method">_calculate_parcel_cgt()</span>
+                    
+                    <div class="process-box">
+                        <h4>Calculation Steps:</h4>
+                        <strong>1. Cost Basis (AUD):</strong> units × cost_per_unit × exchange_rate<br>
+                        <strong>2. Sale Proceeds (AUD):</strong> units × sale_price × exchange_rate<br>
+                        <strong>3. Net Proceeds:</strong> Gross proceeds - proportional commission<br>
+                        <strong>4. Capital Gain/Loss:</strong> Net proceeds - Cost basis<br>
+                        <strong>5. CGT Discount:</strong> If long-term and gain > 0, apply 50% discount<br>
+                        <strong>6. Taxable Amount:</strong> Capital gain × (1 - discount_rate)
+                    </div>
+                    
+                    <div class="code-snippet">
+# Example calculation
+cost_basis_aud = units_sold * cost_per_unit * exchange_rate
+net_proceeds_aud = (units_sold * sale_price - commission) * exchange_rate
+capital_gain_aud = net_proceeds_aud - cost_basis_aud
+
+# Apply CGT discount for long-term holdings
+if is_long_term and capital_gain_aud > 0:
+    taxable_gain_aud = capital_gain_aud * 0.5  # 50% discount
+else:
+    taxable_gain_aud = capital_gain_aud</div>
+                </div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="step-box">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <div class="step-title">Update Cost Basis & Build Results</div>
+                    <div class="step-description">
+                        • Remove consumed units from cost basis dictionary<br>
+                        • Add CGT record to results DataFrame<br>
+                        • Log optimization decisions and tax savings
+                    </div>
+                    
+                    <div class="process-box">
+                        <h4>Result Record Contains:</h4>
+                        • Symbol, dates, units sold<br>
+                        • Cost basis and sale proceeds (AUD)<br>
+                        • Capital gain/loss and taxable amount<br>
+                        • CGT discount rate applied<br>
+                        • Parcel source and optimization phase<br>
+                        • Days held and long-term status
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Helper Methods -->
+        <div class="flow-section">
+            <h2>🔧 Helper Methods</h2>
+            
+            <div class="data-flow" style="grid-template-columns: 1fr 1fr;">
+                <div class="step-box">
+                    <h4><span class="helper-method">_fifo_selection()</span></h4>
+                    <div class="step-description">
+                        <strong>Simple FIFO Strategy:</strong><br>
+                        • Select parcels in chronological order<br>
+                        • Oldest purchases first<br>
+                        • No optimization for tax efficiency<br>
+                        • Used for comparison with tax-optimal
+                    </div>
+                </div>
+                
+                <div class="step-box">
+                    <h4><span class="helper-method">_parse_date()</span></h4>
+                    <div class="step-description">
+                        <strong>Date Parsing:</strong><br>
+                        • Handle multiple date formats<br>
+                        • DD.M.YY, DD/MM/YY, YYYY-MM-DD<br>
+                        • Fallback for invalid dates<br>
+                        • Convert to datetime objects
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-flow" style="grid-template-columns: 1fr 1fr;">
+                <div class="step-box">
+                    <h4><span class="helper-method">_calculate_parcel_cgt()</span></h4>
+                    <div class="step-description">
+                        <strong>Detailed CGT Calculation:</strong><br>
+                        • Per-parcel gain/loss calculation<br>
+                        • AUD conversion with exchange rates<br>
+                        • CGT discount application<br>
+                        • Commission allocation
+                    </div>
+                </div>
+                
+                <div class="step-box">
+                    <h4><span class="helper-method">_log()</span></h4>
+                    <div class="step-description">
+                        <strong>Processing Audit Trail:</strong><br>
+                        • Timestamp every decision<br>
+                        • Track optimization choices<br>
+                        • Record tax savings achieved<br>
+                        • Debug information for validation
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Final Output -->
+        <div class="flow-section">
+            <h2>📊 Final Output Structure</h2>
+            
+            <div class="data-flow">
+                <div class="data-output" style="text-align: left;">
+                    <strong>CGT DataFrame Columns:</strong><br>
+                    • symbol, sale_date, purchase_date<br>
+                    • units_sold, days_held, is_long_term<br>
+                    • cost_basis_aud, net_proceeds_aud<br>
+                    • capital_gain_aud, taxable_gain_aud<br>
+                    • cgt_discount_rate, exchange_rate<br>
+                    • parcel_source, optimization_phase
+                </div>
+                <div class="data-arrow">+</div>
+                <div class="data-output" style="text-align: left;">
+                    <strong>Additional Outputs:</strong><br>
+                    • Updated cost basis dictionary<br>
+                    • Warnings list (missing data, etc.)<br>
+                    • Processing logs (audit trail)<br>
+                    • Optimization savings summary
+                </div>
+            </div>
+        </div>
+        
+        <!-- Success Metrics -->
+        <div class="flow-section" style="background: #d1f2eb;">
+            <h2>✅ Success Indicators</h2>
+            <div class="process-box">
+                <h4>What Success Looks Like:</h4>
+                • <strong>16 sales transactions</strong> → <strong>Multiple CGT records</strong> (not 0!)<br>
+                • <strong>Long-term parcels selected first</strong> when available<br>
+                • <strong>50% CGT discount applied</strong> to long-term gains<br>
+                • <strong>Higher cost basis parcels used first</strong> within categories<br>
+                • <strong>Detailed logs showing</strong> each optimization decision<br>
+                • <strong>Tax savings demonstrated</strong> vs simple FIFO
+            </div>
+        </div>
+    </div>
+</body>
+</html>
