@@ -1,0 +1,101 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Real Data (sensitive) - but keep test_data for system testing
+real_data/
+original_data/
+backup_data/
+user_data/
+production_data/
+
+# But exclude any real transaction files in test_data
+test_data/*_real_*
+test_data/*_production_*
+
+# Output Files
+output/
+exports/
+results/
+*.xlsx
+*.xls
+reports/*.csv
+reports/*.xlsx
+
+# Logs
+*.log
+logs/
+processing_logs/
+
+# Temporary Files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# RBA Exchange Rate Cache
+rates_cache/
+fx_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Configuration Files (may contain sensitive data)
+config.ini
+settings.json
+secrets.json
+
+# Large datasets
+large_datasets/
+historical_data/
+
+# Backup files
+*.bak
+*.backup
