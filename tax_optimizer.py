@@ -225,22 +225,48 @@ class ParcelOptimizer:
         return updated_parcels
     
     def _parse_date(self, date_str: str) -> datetime:
-        """Parse date string in DD.M.YY or DD.MM.YY format."""
-        try:
-            # Try DD.M.YY format first
-            return datetime.strptime(date_str, "%d.%m.%y")
-        except ValueError:
+        """Parse date string in various formats with robust handling."""
+        if not date_str:
+            self._log(f"⚠️ Empty date string, using default")
+            return datetime(2020, 1, 1)
+        
+        # Clean the date string
+        date_str = str(date_str).strip()
+        
+        # List of date formats to try, in order of likelihood
+        date_formats = [
+            "%d/%m/%y",     # 19/12/24, 01/05/25
+            "%d/%m/%Y",     # 19/12/2024, 01/05/2025
+            "%d.%m.%y",     # 12.2.21, 23.6.21
+            "%d.%m.%Y",     # 12.2.2021
+            "%Y-%m-%d",     # 2024-12-19
+            "%d-%m-%y",     # 19-12-24
+            "%d-%m-%Y",     # 19-12-2024
+        ]
+        
+        for fmt in date_formats:
             try:
-                # Try DD.MM.YY format
-                return datetime.strptime(date_str, "%d.%m.%Y")
+                parsed_date = datetime.strptime(date_str, fmt)
+                # Additional validation: ensure the date makes sense
+                if parsed_date.year < 2000:
+                    # Handle 2-digit years that might be interpreted incorrectly
+                    if parsed_date.year < 50:  # 00-49 = 2000-2049
+                        parsed_date = parsed_date.replace(year=parsed_date.year + 2000)
+                    else:  # 50-99 = 1950-1999
+                        parsed_date = parsed_date.replace(year=parsed_date.year + 1900)
+                
+                # Sanity check: date should be between 2000 and 2030
+                if 2000 <= parsed_date.year <= 2030:
+                    return parsed_date
+                else:
+                    continue  # Try next format
+                    
             except ValueError:
-                try:
-                    # Try YYYY-MM-DD format
-                    return datetime.strptime(date_str, "%Y-%m-%d")
-                except ValueError:
-                    # Default to recent date to avoid issues
-                    self._log(f"⚠️ Could not parse date '{date_str}', using default")
-                    return datetime(2020, 1, 1)
+                continue  # Try next format
+        
+        # If all formats fail, log the issue and use a safe default
+        self._log(f"⚠️ Could not parse date '{date_str}' with any known format, using default")
+        return datetime(2020, 1, 1)
     
     def _log(self, message: str):
         """Add message to processing log."""
