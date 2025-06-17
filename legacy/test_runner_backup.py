@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Import our enhanced modules
 from tax_optimizer import optimize_sale_for_cgt
-from cgt_calculator_enhanced import calculate_enhanced_cgt
+from enhanced_cgt_with_rba import calculate_enhanced_cgt_with_rba
 
 def run_basic_test():
     """Run a basic test of the enhanced CGT system."""
@@ -36,9 +36,9 @@ def run_basic_test():
         print("\n🧮 Running enhanced CGT calculation...")
         
         # Run enhanced CGT calculation
-        cgt_df, updated_cost_basis, warnings, processing_log = calculate_enhanced_cgt(
-            sales_df, cost_basis_dict, strategy="tax_optimal"
-        )
+        cgt_df, updated_cost_basis, warnings, processing_log = calculate_enhanced_cgt_with_rba(
+        sales_df, cost_basis_dict, strategy="tax_optimal"
+     )
         
         print(f"\n📊 RESULTS:")
         print(f"   CGT records generated: {len(cgt_df)}")
