@@ -1,0 +1,426 @@
+{
+  "AEIS": [
+    {
+      "units": 120.0,
+      "price": 107.26,
+      "commission": 25.74,
+      "date": "09.10.24"
+    }
+  ],
+  "BA": [
+    {
+      "units": 50.0,
+      "price": 177.61,
+      "commission": 17.76,
+      "date": "19.12.24"
+    }
+  ],
+  "CFLT": [
+    {
+      "units": 100.0,
+      "price": 69.9,
+      "commission": 0.0,
+      "date": "07.12.21"
+    },
+    {
+      "units": 150.0,
+      "price": 38.5,
+      "commission": 0.0,
+      "date": "29.07.21"
+    },
+    {
+      "units": 350.0,
+      "price": 21.91,
+      "commission": 15.34,
+      "date": "03.01.24"
+    },
+    {
+      "units": 220.0,
+      "price": 36.51,
+      "commission": 16.06,
+      "date": "13.02.25"
+    },
+    {
+      "units": 430.0,
+      "price": 21.35,
+      "commission": 18.36,
+      "date": "08.04.25"
+    }
+  ],
+  "CYBR": [
+    {
+      "units": 60.0,
+      "price": 137.0,
+      "commission": 0.0,
+      "date": "23.06.21"
+    }
+  ],
+  "ESTC": [
+    {
+      "units": 100.0,
+      "price": 113.7599,
+      "commission": 0.0,
+      "date": "07.12.21"
+    },
+    {
+      "units": 45.0,
+      "price": 122.47,
+      "commission": 0.0,
+      "date": "08.03.21"
+    },
+    {
+      "units": 150.0,
+      "price": 80.0,
+      "commission": 0.0,
+      "date": "26.01.22"
+    }
+  ],
+  "FROG": [
+    {
+      "units": 150.0,
+      "price": 34.96,
+      "commission": 0.0,
+      "date": "13.05.21"
+    }
+  ],
+  "FRSH": [
+    {
+      "units": 200.0,
+      "price": 37.3,
+      "commission": 0.0,
+      "date": "1.1.20"
+    },
+    {
+      "units": 180.0,
+      "price": 31.955,
+      "commission": 0.0,
+      "date": "12.02.21"
+    },
+    {
+      "units": 300.0,
+      "price": 26.455,
+      "commission": 0.0,
+      "date": "12.08.21"
+    },
+    {
+      "units": 300.0,
+      "price": 21.565,
+      "commission": 0.0,
+      "date": "01.10.22"
+    }
+  ],
+  "FSLY": [
+    {
+      "units": 150.0,
+      "price": 42.3,
+      "commission": 0.0,
+      "date": "13.08.21"
+    }
+  ],
+  "HOOD": [
+    {
+      "units": 200.0,
+      "price": 19.2,
+      "commission": 0.0,
+      "date": "20.12.21"
+    },
+    {
+      "units": 300.0,
+      "price": 15.07,
+      "commission": 0.0,
+      "date": "10.01.22"
+    },
+    {
+      "units": 600.0,
+      "price": 11.55,
+      "commission": 13.86,
+      "date": "11.12.23"
+    }
+  ],
+  "HUBS": [
+    {
+      "units": 25.0,
+      "price": 395.0,
+      "commission": 0.0,
+      "date": "16.03.22"
+    },
+    {
+      "units": 25.0,
+      "price": 488.0,
+      "commission": 0.0,
+      "date": "12.01.22"
+    },
+    {
+      "units": 25.0,
+      "price": 485.0,
+      "commission": 0.0,
+      "date": "12.01.22"
+    }
+  ],
+  "LRN": [
+    {
+      "units": 200.0,
+      "price": 35.87,
+      "commission": 0.0,
+      "date": "29.09.21"
+    },
+    {
+      "units": 102.0,
+      "price": 67.0,
+      "commission": 13.67,
+      "date": "16.10.24"
+    }
+  ],
+  "MDB": [
+    {
+      "units": 16.0,
+      "price": 446.91,
+      "commission": 0.0,
+      "date": "07.12.21"
+    },
+    {
+      "units": 20.0,
+      "price": 328.54,
+      "commission": 0.0,
+      "date": "08.03.21"
+    },
+    {
+      "units": 90.0,
+      "price": 145.0,
+      "commission": 0.0,
+      "date": "09.11.22"
+    }
+  ],
+  "NET": [
+    {
+      "units": 65.0,
+      "price": 113.0,
+      "commission": 0.0,
+      "date": "06.10.21"
+    },
+    {
+      "units": 78.0,
+      "price": 147.38,
+      "commission": 0.0,
+      "date": "08.12.21"
+    },
+    {
+      "units": 300.0,
+      "price": 55.54,
+      "commission": 0.0,
+      "date": "20.05.22"
+    },
+    {
+      "units": 300.0,
+      "price": 41.0,
+      "commission": 0.0,
+      "date": "09.11.22"
+    },
+    {
+      "units": 150.0,
+      "price": 104.739,
+      "commission": 0.0,
+      "date": "10.01.22"
+    },
+    {
+      "units": 150.0,
+      "price": 99.0,
+      "commission": 29.7,
+      "date": "04.04.25"
+    }
+  ],
+  "NVAX": [
+    {
+      "units": 15.0,
+      "price": 238.0,
+      "commission": 0.0,
+      "date": "12.08.21"
+    }
+  ],
+  "NVDA": [
+    {
+      "units": 120.0,
+      "price": 87.46,
+      "commission": 20.99,
+      "date": "07.04.25"
+    }
+  ],
+  "OKTA": [
+    {
+      "units": 30.0,
+      "price": 222.0,
+      "commission": 0.0,
+      "date": "15.06.21"
+    },
+    {
+      "units": 25.0,
+      "price": 210.0,
+      "commission": 0.0,
+      "date": "09.03.21"
+    },
+    {
+      "units": 145.0,
+      "price": 72.69,
+      "commission": 0.0,
+      "date": "07.06.23"
+    }
+  ],
+  "PAYO": [
+    {
+      "units": 800.0,
+      "price": 9.5,
+      "commission": 0.0,
+      "date": "29.09.21"
+    }
+  ],
+  "PD": [
+    {
+      "units": 150.0,
+      "price": 38.26,
+      "commission": 0.0,
+      "date": "03.08.21"
+    }
+  ],
+  "PUBM": [
+    {
+      "units": 150.0,
+      "price": 35.4,
+      "commission": 0.0,
+      "date": "13.05.21"
+    },
+    {
+      "units": 180.0,
+      "price": 34.4,
+      "commission": 0.0,
+      "date": "15.06.21"
+    },
+    {
+      "units": 180.0,
+      "price": 33.0,
+      "commission": 0.0,
+      "date": "09.07.21"
+    }
+  ],
+  "RBLX": [
+    {
+      "units": 500.0,
+      "price": 31.6,
+      "commission": 0.0,
+      "date": "20.05.22"
+    }
+  ],
+  "RSKD": [
+    {
+      "units": 350.0,
+      "price": 26.84,
+      "commission": 0.0,
+      "date": "04.08.21"
+    },
+    {
+      "units": 1000.0,
+      "price": 9.02,
+      "commission": 0.0,
+      "date": "06.12.21"
+    },
+    {
+      "units": 1500.0,
+      "price": 4.41,
+      "commission": 13.23,
+      "date": "18.09.23"
+    }
+  ],
+  "SHOP": [
+    {
+      "units": 50.0,
+      "price": 119.0,
+      "commission": 0.0,
+      "date": "08.03.21"
+    },
+    {
+      "units": 150.0,
+      "price": 90.0,
+      "commission": 0.0,
+      "date": "25.01.22"
+    },
+    {
+      "units": 600.0,
+      "price": 36.3,
+      "commission": 0.0,
+      "date": "20.05.22"
+    }
+  ],
+  "SNOW": [
+    {
+      "units": 90.0,
+      "price": 141.9,
+      "commission": 25.54,
+      "date": "03.07.24"
+    }
+  ],
+  "SPLK": [
+    {
+      "units": 70.0,
+      "price": 144.63,
+      "commission": 20.25,
+      "date": "21.09.23"
+    }
+  ],
+  "SPXU": [
+    {
+      "units": 1000.0,
+      "price": 22.45,
+      "commission": 44.9,
+      "date": "19.12.24"
+    },
+    {
+      "units": 500.0,
+      "price": 22.68,
+      "commission": 22.68,
+      "date": "01.05.25"
+    },
+    {
+      "units": 500.0,
+      "price": 19.7,
+      "commission": 19.7,
+      "date": "14.05.25"
+    }
+  ],
+  "SQ": [
+    {
+      "units": 40.0,
+      "price": 164.315,
+      "commission": 0.0,
+      "date": "23.12.21"
+    },
+    {
+      "units": 100.0,
+      "price": 51.7875,
+      "commission": 10.36,
+      "date": "18.09.23"
+    }
+  ],
+  "TAL": [
+    {
+      "units": 500.0,
+      "price": 5.0,
+      "commission": 0.0,
+      "date": "29.07.21"
+    }
+  ],
+  "TSM": [
+    {
+      "units": 80.0,
+      "price": 134.64,
+      "commission": 21.54,
+      "date": "07.04.25"
+    }
+  ],
+  "TWLO": [
+    {
+      "units": 300.0,
+      "price": 43.0,
+      "commission": 0.0,
+      "date": "09.11.22"
+    }
+  ]
+}
