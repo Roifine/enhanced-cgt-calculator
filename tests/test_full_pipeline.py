@@ -86,12 +86,15 @@ def test_full_pipeline():
             total_gain = cgt_df['capital_gain_aud'].sum()
             total_taxable = cgt_df['taxable_gain_aud'].sum()
             long_term_records = len(cgt_df[cgt_df['is_long_term']])
+            unique_sales = cgt_df['symbol'].nunique()
             
             print(f"   💰 Financial Summary:")
             print(f"      Total capital gain: ${total_gain:.2f} AUD")
             print(f"      Total taxable gain: ${total_taxable:.2f} AUD")
             print(f"      CGT discount savings: ${(total_gain - total_taxable):.2f} AUD")
-            print(f"      Long-term transactions: {long_term_records}/{len(cgt_df)}")
+            print(f"      Long-term parcel records: {long_term_records}/{len(cgt_df)}")
+            print(f"      Unique symbols sold: {unique_sales}")
+            print(f"      ✅ Per-parcel detail: Each row = one parcel portion")
             
             # Exchange rate validation
             if 'exchange_rate' in cgt_df.columns:
@@ -106,7 +109,8 @@ def test_full_pipeline():
             print(f"   📋 Sample Transaction:")
             sample = cgt_df.iloc[0]
             print(f"      {sample['symbol']}: {sample['units_sold']} units")
-            print(f"      Purchase: {sample['purchase_date'].strftime('%Y-%m-%d')}")
+            print(f"      Purchase: {sample['purchase_date'].strftime('%Y-%m-%d')} @ ${sample['buy_unit_price_usd']:.2f} USD")
+            print(f"      Sale: {sample['sale_date'].strftime('%Y-%m-%d')} @ ${sample['sale_unit_price_usd']:.2f} USD")
             print(f"      Gain: ${sample['capital_gain_aud']:.2f} AUD")
             print(f"      Long-term: {'Yes' if sample['is_long_term'] else 'No'}")
             
@@ -164,9 +168,10 @@ def test_full_pipeline():
         # Success summary
         print(f"\n🎉 PIPELINE INTEGRATION SUCCESS!")
         print(f"   ✅ CSV processing: {len(csv_files)} files → {len(cost_basis_dict)} symbols")
-        print(f"   ✅ CGT calculation: {len(fy24_25_sales)} sales → {len(cgt_df)} records")
+        print(f"   ✅ CGT calculation: {len(fy24_25_sales)} sales → {len(cgt_df)} parcel records")
         print(f"   ✅ RBA integration: Working with real exchange rates")
         print(f"   ✅ Tax optimization: Long-term priority selection active")
+        print(f"   ✅ Per-parcel detail: Complete audit trail with individual parcel prices")
         print(f"   ✅ Zero critical errors: Ready for Streamlit integration!")
         
         return True

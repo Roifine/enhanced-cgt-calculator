@@ -77,6 +77,9 @@ class ParcelOptimizer:
                     'units': units,
                     'price_aud': price_aud,
                     'commission_aud': commission_aud,
+                    'price_usd': parcel.get('price_usd', price_aud),              # ADD THIS
+                    'commission_usd': parcel.get('commission_usd', commission_aud),  # ADD THIS  
+                    'exchange_rate_buy': parcel['exchange_rate_buy'],    # ADD THIS
                     'date': parcel['date'],
                     'purchase_date': purchase_date,
                     'days_held': days_held,
@@ -214,7 +217,10 @@ class ParcelOptimizer:
                     'commission': proportional_commission_aud,  # For backward compatibility
                     'price_aud': parcel['price_aud'],  # New AUD-focused fields
                     'commission_aud': proportional_commission_aud,
-                    'date': parcel['date'],
+                    'price_usd': parcel['price_usd'],                           # ✅ ADD
+                    'commission_usd': parcel['commission_usd'] * commission_proportion,  # ✅ ADD (proportional!)
+                    'exchange_rate_buy': parcel['exchange_rate_buy'], 
+                    'date': parcel['date'], 
                     'purchase_date': parcel['purchase_date'],
                     'days_held': parcel['days_held'],
                     'is_long_term': parcel['is_long_term'],
@@ -269,8 +275,9 @@ class ParcelOptimizer:
                     updated_parcel.update({
                         'price_aud': parcel['price_aud'],
                         'commission_aud': parcel['commission_aud'] * proportion,
-                        'price_usd': parcel.get('price_usd', parcel['price_aud']),
-                        'commission_usd': parcel.get('commission_usd', parcel['commission_aud'] * proportion),
+                        'price_usd': parcel.get('price_usd', parcel['price_aud']),           # ✅ PRESERVE
+                        'commission_usd': parcel.get('commission_usd', parcel['commission_aud']) * proportion,  # ✅ PRESERVE (proportional)
+                        'exchange_rate_buy': parcel.get('exchange_rate_buy', 1.0),          # ✅ PRESERVE
                         'cost_per_unit_aud': parcel.get('cost_per_unit_aud', 
                                                        parcel['price_aud'] + (parcel['commission_aud'] / parcel['units'])),
                         'total_cost_aud': remaining_units * parcel.get('cost_per_unit_aud',

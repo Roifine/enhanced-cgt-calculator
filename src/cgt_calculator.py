@@ -25,7 +25,8 @@ def safe_commission(value, default_missing=30.0, min_reasonable=0.0):
     
     try:
         num_value = float(value)
-        return max(min_reasonable, num_value)  # Keep explicit zeros, ensure non-negative
+        # Use absolute value to handle negative commission format from brokers
+        return max(min_reasonable, abs(num_value))  # ← ADD abs() HERE
     except (ValueError, TypeError):
         return default_missing
 
@@ -160,7 +161,8 @@ class EnhancedCGTCalculatorWithRBA:
                 for parcel in selected_parcels:
                     cgt_record = self._calculate_parcel_cgt_with_rba(
                         symbol, sale_date, parcel, sale_price_aud, sale_commission_aud, 
-                        units_sold, price_conversion['aud_usd_rate']
+                        units_sold, price_conversion['aud_usd_rate'],
+                        sale_price_usd, sale_commission_usd  # ADD THESE TWO LINES!
                     )
                     cgt_records.append(cgt_record)
                     
@@ -186,6 +188,8 @@ class EnhancedCGTCalculatorWithRBA:
         # Create results DataFrame
         if cgt_records:
             cgt_df = pd.DataFrame(cgt_records)
+            # Add USD prices for transparency (post-processing)
+            #cgt_df = self._add_usd_prices(cgt_df, working_cost_basis, sales_df)  # ← ADD THIS LINE
             self._log(f"\n✅ CGT Calculation Complete:")
             self._log(f"   📊 {len(cgt_records)} parcel transactions processed")
             self._log(f"   💰 Total capital gain: ${cgt_df['capital_gain_aud'].sum():.2f} AUD")
@@ -248,10 +252,13 @@ class EnhancedCGTCalculatorWithRBA:
         symbol: str, 
         sale_date: datetime, 
         parcel: Dict, 
-        sale_price_aud: float, 
+        sale_price_aud: float,
         sale_commission_aud: float, 
         total_units_sold: float,
-        exchange_rate: float
+        exchange_rate: float,
+        sale_price_usd: float,        
+        sale_commission_usd: float 
+        
     ) -> Dict:
         """
         Calculate CGT for a single parcel portion with real RBA conversion.
@@ -290,11 +297,15 @@ class EnhancedCGTCalculatorWithRBA:
             'sale_price_aud': sale_price_aud,
             'gross_proceeds_aud': gross_proceeds_aud,
             'sale_commission_aud': allocated_sale_commission_aud,
+            'buy_commission_aud': parcel['commission_aud'],
             'net_proceeds_aud': net_proceeds_aud,
             'capital_gain_aud': capital_gain_aud,
             'cgt_discount_rate': cgt_discount_rate,
             'taxable_gain_aud': taxable_gain_aud,
-            'exchange_rate': exchange_rate,
+            'buy_unit_price_usd': parcel['price_usd'],              # NEW FIELD
+            'sale_unit_price_usd': sale_price_usd,                  # NEW FIELD
+            'exchange_rate_buy': parcel['exchange_rate_buy'],       # NEW FIELD  
+            'exchange_rate_sell': exchange_rate, 
             'parcel_source': parcel['date'],
             'optimization_phase': parcel.get('phase', 'UNKNOWN'),
             'rba_conversion': True  # Flag indicating real RBA rates used
@@ -364,6 +375,9 @@ class EnhancedCGTCalculatorWithRBA:
                     'cost_per_unit_aud': cost_per_unit_aud,
                     'total_cost': total_cost_aud,  # For backward compatibility
                     'total_cost_aud': total_cost_aud,
+                    'price_usd': parcel.get('price_usd', price_aud),          # ADD THIS
+                    'commission_usd': parcel.get('commission_usd', proportional_commission),  # ADD THIS
+                    'exchange_rate_buy': parcel.get('exchange_rate_buy', 1.0),  # ADD THIS
                     'phase': 'FIFO'
                 }
                 selected_parcels.append(selected_parcel)
@@ -385,6 +399,40 @@ class EnhancedCGTCalculatorWithRBA:
                 updated_parcels.append(parcel.copy())
         
         return selected_parcels, updated_parcels, remaining_units
+    
+    def _add_usd_prices(self, cgt_df: pd.DataFrame, cost_basis_dict: Dict, sales_df: pd.DataFrame) -> pd.DataFrame:
+        """Add USD prices to CGT DataFrame using simple lookup."""
+    
+        # Add sale price USD from original sales data
+        sale_price_map = dict(zip(sales_df['Symbol'], sales_df['Price (USD)']))
+        #cgt_df['sale_price_usd'] = cgt_df['symbol'].map(sale_price_map)
+    
+        # Add purchase price USD using parcel_source lookup  
+        def lookup_purchase_price(row):
+            symbol = row['symbol']
+            parcel_date = row['parcel_source']
+    
+            print(f"🔍 Looking for: {symbol} with date '{parcel_date}'")
+    
+            if symbol in cost_basis_dict:
+                print(f"✅ Found symbol {symbol}, has {len(cost_basis_dict[symbol])} parcels")
+                for i, parcel in enumerate(cost_basis_dict[symbol]):
+                    parcel_date_in_dict = parcel.get('date', 'NO_DATE')
+                    parcel_price = parcel.get('price', 'NO_PRICE_FIELD')
+                    print(f"   Parcel {i}: date='{parcel_date_in_dict}', price={parcel_price}")
+            
+                    if parcel['date'] == parcel_date:
+                        print(f"🎯 MATCH! Returning price: {parcel.get('price', 0)}")
+                        return parcel.get('price', 0)
+                print(f"❌ No date match found for '{parcel_date}'")
+            else:
+                print(f"❌ Symbol {symbol} not found in cost basis")
+                print(f"Available symbols: {list(cost_basis_dict.keys())[:5]}...")
+    
+            return 0
+    
+        cgt_df['purchase_price_usd'] = cgt_df.apply(lookup_purchase_price, axis=1)
+        return cgt_df
     
     def _parse_date(self, date_str: str) -> datetime:
         """Parse date string in various formats with robust handling."""
