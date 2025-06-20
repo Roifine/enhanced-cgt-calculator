@@ -249,11 +249,47 @@ def show_results():
             long_term_count = len(cgt_df[cgt_df['is_long_term']])
             st.metric("Long-term Holdings", f"{long_term_count}/{len(cgt_df)}")
         
-        # Tax optimization summary
-        if long_term_count > 0:
-            cgt_discount_savings = cgt_df[cgt_df['is_long_term'] & (cgt_df['capital_gain_aud'] > 0)]['capital_gain_aud'].sum() * 0.5
-            if cgt_discount_savings > 0:
-                st.info(f"🎯 **Tax Optimization:** Your long-term holdings saved approximately **${cgt_discount_savings:,.2f} AUD** in CGT through the 50% discount!")
+        
+        long_term_records = cgt_df[cgt_df['is_long_term']]
+        long_term_gains = long_term_records[long_term_records['capital_gain_aud'] > 0]['capital_gain_aud'].sum()
+        cgt_discount_savings = long_term_gains * 0.5
+        total_records = len(cgt_df)
+        
+        # Only show if there are actual savings
+        if cgt_discount_savings > 0:
+            st.success(f"""
+            🎯 **Your Tax Optimization Results:**
+            
+            💰 **You saved ${cgt_discount_savings:,.2f} AUD** through smart parcel selection!
+            
+            📊 **How we optimized:**
+            • Long-term parcels prioritized: {long_term_count} out of {total_records} transactions
+            • CGT discount applied: 50% reduction on long-term capital gains
+            • Strategy: Tax-optimal selection (long-term first, then highest cost basis)
+            
+            This saved you approximately **{(cgt_discount_savings/total_taxable*100) if total_taxable > 0 else 0:.1f}%** compared to no optimization!
+            """)
+        elif long_term_count > 0:
+            # Handle case where there are long-term holdings but no gains (losses)
+            st.info(f"""
+            🎯 **Your Tax Optimization Results:**
+            
+            📊 **Strategy Applied:**
+            • Long-term parcels prioritized: {long_term_count} out of {total_records} transactions  
+            • Tax-optimal selection used (long-term first, then highest cost basis)
+            • While your portfolio had capital losses this period, the optimization ensures the best tax treatment for future gains
+            """)
+        else:
+            # Handle case with no long-term holdings
+            st.info(f"""
+            🎯 **Your Tax Optimization Results:**
+            
+            📊 **Analysis:**
+            • All {total_records} transactions were short-term holdings (held < 12 months)
+            • No CGT discount available for short-term holdings  
+            • Strategy: Selected highest cost basis parcels first to minimize taxable gains
+            • **Tip:** Hold investments for 12+ months to unlock 50% CGT discount on future sales
+            """)
         
         # Results table
         st.subheader("📋 Detailed CGT Records")
