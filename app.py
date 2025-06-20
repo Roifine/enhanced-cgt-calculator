@@ -26,6 +26,107 @@ except ImportError as e:
     st.error("Please ensure all backend modules are in the 'src/' directory")
     st.stop()
 
+def prepare_symbol_table_data(symbol_records):
+        """
+        Prepare symbol records for display table with proper formatting.
+        
+        Args:
+            symbol_records: DataFrame subset for one symbol
+            
+        Returns:
+            DataFrame formatted for display
+        """
+    
+        # Create display dataframe
+        display_df = pd.DataFrame()
+        
+        # Format Sale Date
+        display_df['Sale Date'] = symbol_records['sale_date'].apply(format_date_for_display)
+        
+        # Units Sold (keep as number for proper sorting)
+        display_df['Units Sold'] = symbol_records['units_sold']
+        
+        # Total Proceeds AUD (formatted as currency string)
+        display_df['Total Proceeds AUD'] = symbol_records['net_proceeds_aud'].apply(format_currency_aud)
+        
+        # Cost AUD (formatted as currency string)
+        display_df['Cost AUD'] = symbol_records['cost_basis_aud'].apply(format_currency_aud)
+        
+        # LONG TERM (Yes/No)
+        display_df['LONG TERM'] = symbol_records['is_long_term'].apply(lambda x: 'Yes' if x else 'No')
+        
+        # Capital Gain AUD (formatted as currency string)
+        display_df['Capital Gain (AUD)'] = symbol_records['capital_gain_aud'].apply(format_currency_aud)
+        
+        # Sort by sale date (most recent first)
+        display_df = display_df.sort_values('Sale Date', ascending=False)
+        
+        return display_df
+
+
+def format_date_for_display(date_value):
+    """
+    Format date as '15 Apr 2024' for display.
+    
+    Args:
+        date_value: datetime object or string
+        
+    Returns:
+        Formatted date string
+    """
+    try:
+        if isinstance(date_value, str):
+            # Convert string to datetime if needed
+            date_obj = pd.to_datetime(date_value)
+        else:
+            date_obj = date_value
+        
+        # Format as "15 Apr 2024"
+        return date_obj.strftime('%d %b %Y')
+    
+    except Exception as e:
+        # Fallback for any date parsing issues
+        return str(date_value)
+
+
+def format_currency_aud(amount):
+    """
+    Format currency amount as $15,000.0 for display.
+    
+    Args:
+        amount: Numeric amount
+        
+    Returns:
+        Formatted currency string
+    """
+    try:
+        # Format with 1 decimal place and thousands separator
+        return f"${amount:,.1f}"
+    
+    except Exception as e:
+        # Fallback for any formatting issues
+        return f"${float(amount):.1f}" if amount is not None else "$0.0"
+
+
+# ENHANCED ERROR HANDLING (Optional addition)
+def show_results_with_error_handling():
+    """Enhanced version with error handling for production."""
+    
+    try:
+        # Call the main show_results function
+        show_results()
+        
+    except KeyError as e:
+        st.error(f"❌ Missing required data: {e}")
+        st.write("Please ensure your CGT calculation completed successfully.")
+        
+    except Exception as e:
+        st.error(f"❌ Error displaying results: {str(e)}")
+        st.write("Please try refreshing the page or re-processing your files.")
+        
+        # Show debug info in development
+        if st.checkbox("Show debug info"):
+            st.exception(e)
 def save_uploaded_files(uploaded_files):
     """Save multiple uploaded files to temporary locations for backend processing."""
     temp_file_paths = []
@@ -291,6 +392,38 @@ def show_results():
             • **Tip:** Hold investments for 12+ months to unlock 50% CGT discount on future sales
             """)
         
+        if len(cgt_df) > 0:
+            st.subheader("📋 Transaction Breakdown by Symbol")
+            st.write("Detailed view of each symbol's transactions and tax calculations:")
+            
+            # Group CGT data by symbol
+            for symbol in sorted(cgt_df['symbol'].unique()):
+                symbol_records = cgt_df[cgt_df['symbol'] == symbol].copy()
+                
+                # Calculate total capital gain for this symbol
+                total_capital_gain = symbol_records['capital_gain_aud'].sum()
+                transaction_count = len(symbol_records)
+                
+                # Create expandable section for each symbol
+                with st.expander(f"**{symbol}** - {transaction_count} Transaction{'s' if transaction_count != 1 else ''} (Capital gain to report ${total_capital_gain:.1f})", expanded=True):
+                    
+                    # Prepare data for display
+                    display_data = prepare_symbol_table_data(symbol_records)
+                    
+                    # Display the table
+                    st.dataframe(
+                        display_data,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Sale Date": st.column_config.TextColumn("Sale Date", width="medium"),
+                            "Units Sold": st.column_config.NumberColumn("Units Sold", format="%.0f"),
+                            "Total Proceeds AUD": st.column_config.TextColumn("Total Proceeds AUD", width="medium"),
+                            "Cost AUD": st.column_config.TextColumn("Cost AUD", width="medium"),
+                            "LONG TERM": st.column_config.TextColumn("LONG TERM", width="small"),
+                            "Capital Gain (AUD)": st.column_config.TextColumn("Capital Gain (AUD)", width="medium")
+                        }
+                    )
         # Results table
         st.subheader("📋 Detailed CGT Records")
         
@@ -380,6 +513,7 @@ def show_results():
     # Processing info
     if processing_time:
         st.caption(f"Processed {len(processed_files)} file(s) at {processing_time.strftime('%Y-%m-%d %H:%M:%S')} using tax-optimal strategy")
+    
 
 if __name__ == "__main__":
     main()
