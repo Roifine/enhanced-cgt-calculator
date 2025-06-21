@@ -8,6 +8,7 @@ import pandas as pd
 import json
 import os
 import tempfile
+import copy
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import warnings
@@ -496,8 +497,192 @@ class EnhancedCGTCalculatorWithRBA:
 # Convenience functions for compatibility
 def calculate_enhanced_cgt_with_rba(sales_df, cost_basis_dict, fx_file_paths=None, strategy="tax_optimal"):
     """
-    Convenience function for enhanced CGT calculation with RBA integration.
-    Compatible with existing code structure.
+    Enhanced function that supports strategy comparison.
+    
+    Args:
+        sales_df: Sales transactions DataFrame
+        cost_basis_dict: Cost basis dictionary
+        fx_file_paths: Optional FX file paths
+        strategy: "tax_optimal", "fifo", or "comparison"
+        
+    Returns:
+        If strategy != "comparison":
+            (cgt_df, updated_cost_basis, warnings, processing_records)
+        If strategy == "comparison":
+            (optimized_cgt_df, fifo_cgt_df, comparison_data, updated_cost_basis, warnings, processing_records)
     """
+    
+    if strategy == "comparison":
+        # Run dual strategy calculation
+        return _calculate_comparison_strategies(sales_df, cost_basis_dict, fx_file_paths)
+    else:
+        # Original single strategy calculation
+        calculator = EnhancedCGTCalculatorWithRBA(fx_file_paths)
+        return calculator.calculate_optimized_cgt(sales_df, cost_basis_dict, strategy)
+
+
+def _calculate_comparison_strategies(sales_df, cost_basis_dict, fx_file_paths=None):
+    """
+    Run both FIFO and tax-optimal strategies for comparison.
+    
+    Returns:
+        (optimized_cgt_df, fifo_cgt_df, comparison_data, updated_cost_basis, warnings, processing_records)
+    """
+    
+    print("🔄 Running strategy comparison...")
+    print("   Step 1/3: Calculating FIFO strategy...")
+    
+    # Initialize calculator
     calculator = EnhancedCGTCalculatorWithRBA(fx_file_paths)
-    return calculator.calculate_optimized_cgt(sales_df, cost_basis_dict, strategy)
+    
+    # Strategy 1: FIFO calculation
+    try:
+        fifo_cgt_df, fifo_cost_basis, fifo_warnings, fifo_logs = calculator.calculate_optimized_cgt(
+            sales_df.copy(), 
+            copy.deepcopy(cost_basis_dict), 
+            strategy="fifo"
+        )
+        print(f"   ✅ FIFO complete: {len(fifo_cgt_df)} records generated")
+    except Exception as e:
+        print(f"   ❌ FIFO calculation failed: {e}")
+        # Fall back to single strategy
+        return calculator.calculate_optimized_cgt(sales_df, cost_basis_dict, "tax_optimal")
+    
+    print("   Step 2/3: Calculating tax-optimal strategy...")
+    
+    # Strategy 2: Tax-optimal calculation  
+    try:
+        optimized_cgt_df, optimized_cost_basis, optimized_warnings, optimized_logs = calculator.calculate_optimized_cgt(
+            sales_df.copy(),
+            copy.deepcopy(cost_basis_dict),
+            strategy="tax_optimal"
+        )
+        print(f"   ✅ Tax-optimal complete: {len(optimized_cgt_df)} records generated")
+    except Exception as e:
+        print(f"   ❌ Tax-optimal calculation failed: {e}")
+        # Fall back to FIFO only
+        return fifo_cgt_df, fifo_cost_basis, fifo_warnings, fifo_logs
+    
+    print("   Step 3/3: Generating comparison analysis...")
+    
+    # Strategy 3: Generate comparison data
+    comparison_data = _generate_strategy_comparison(fifo_cgt_df, optimized_cgt_df)
+    
+    # Combine warnings and logs
+    combined_warnings = list(set(fifo_warnings + optimized_warnings))  # Remove duplicates
+    combined_logs = fifo_logs + ["=" * 50, "🔄 SWITCHING TO TAX-OPTIMAL STRATEGY", "=" * 50] + optimized_logs
+    
+    print(f"   ✅ Comparison complete: Tax optimization saved ${comparison_data['tax_savings']:.2f} AUD")
+    
+    return optimized_cgt_df, fifo_cgt_df, comparison_data, optimized_cost_basis, combined_warnings, combined_logs
+
+
+def _generate_strategy_comparison(fifo_cgt_df, optimized_cgt_df):
+    """
+    Generate comparison metrics between FIFO and tax-optimal strategies.
+    
+    Args:
+        fifo_cgt_df: FIFO strategy results
+        optimized_cgt_df: Tax-optimal strategy results
+        
+    Returns:
+        Dictionary with comparison metrics
+    """
+    
+    # Calculate total tax liability for each strategy
+    fifo_total_tax = fifo_cgt_df['taxable_gain_aud'].sum()
+    optimized_total_tax = optimized_cgt_df['taxable_gain_aud'].sum()
+    
+    # Calculate savings
+    tax_savings = fifo_total_tax - optimized_total_tax
+    percentage_saved = (tax_savings / fifo_total_tax * 100) if fifo_total_tax > 0 else 0
+    
+    # Calculate average cost basis used
+    fifo_avg_cost_basis = fifo_cgt_df['cost_basis_aud'].sum() / fifo_cgt_df['units_sold'].sum() if len(fifo_cgt_df) > 0 else 0
+    optimized_avg_cost_basis = optimized_cgt_df['cost_basis_aud'].sum() / optimized_cgt_df['units_sold'].sum() if len(optimized_cgt_df) > 0 else 0
+    
+    # Long-term holdings comparison
+    fifo_long_term_count = len(fifo_cgt_df[fifo_cgt_df['is_long_term']])
+    optimized_long_term_count = len(optimized_cgt_df[optimized_cgt_df['is_long_term']])
+    
+    comparison_data = {
+        # Tax totals
+        'fifo_total_tax': fifo_total_tax,
+        'optimized_total_tax': optimized_total_tax,
+        'tax_savings': tax_savings,
+        'percentage_saved': percentage_saved,
+        
+        # Cost basis analysis
+        'fifo_avg_cost_basis': fifo_avg_cost_basis,
+        'optimized_avg_cost_basis': optimized_avg_cost_basis,
+        'cost_basis_improvement': optimized_avg_cost_basis - fifo_avg_cost_basis,
+        
+        # Transaction analysis
+        'fifo_transaction_count': len(fifo_cgt_df),
+        'optimized_transaction_count': len(optimized_cgt_df),
+        'fifo_long_term_count': fifo_long_term_count,
+        'optimized_long_term_count': optimized_long_term_count,
+        
+        # Additional metrics
+        'fifo_total_capital_gains': fifo_cgt_df['capital_gain_aud'].sum(),
+        'optimized_total_capital_gains': optimized_cgt_df['capital_gain_aud'].sum(),
+    }
+    
+    return comparison_data
+
+def test_strategy_comparison(sales_df, cost_basis_dict):
+    """
+    Test function to validate the dual strategy implementation.
+    """
+    
+    print("🧪 Testing dual strategy implementation...")
+    
+    try:
+        # Run comparison
+        optimized_cgt_df, fifo_cgt_df, comparison_data, updated_cost_basis, warnings, logs = calculate_enhanced_cgt_with_rba(
+            sales_df, cost_basis_dict, strategy="comparison"
+        )
+        
+        print(f"✅ Test Results:")
+        print(f"   FIFO records: {len(fifo_cgt_df)}")
+        print(f"   Optimized records: {len(optimized_cgt_df)}")
+        print(f"   Tax savings: ${comparison_data['tax_savings']:.2f}")
+        print(f"   Percentage saved: {comparison_data['percentage_saved']:.1f}%")
+        print(f"   Cost basis improvement: ${comparison_data['cost_basis_improvement']:.2f}/unit")
+        
+        # Validation checks
+        assert len(fifo_cgt_df) > 0, "FIFO should generate results"
+        assert len(optimized_cgt_df) > 0, "Optimized should generate results"
+        assert comparison_data['tax_savings'] >= 0, "Tax savings should be non-negative"
+        
+        print("✅ All validation checks passed!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+class StrategyComparisonError(Exception):
+    """Custom exception for strategy comparison failures."""
+    pass
+
+def safe_calculate_enhanced_cgt_with_rba(sales_df, cost_basis_dict, fx_file_paths=None, strategy="tax_optimal"):
+    """
+    Production wrapper with comprehensive error handling.
+    """
+    
+    try:
+        return calculate_enhanced_cgt_with_rba(sales_df, cost_basis_dict, fx_file_paths, strategy)
+    
+    except Exception as e:
+        print(f"⚠️ Strategy comparison failed, falling back to tax-optimal only: {e}")
+        
+        # Fallback to single strategy
+        try:
+            calculator = EnhancedCGTCalculatorWithRBA(fx_file_paths)
+            return calculator.calculate_optimized_cgt(sales_df, cost_basis_dict, "tax_optimal")
+        except Exception as fallback_error:
+            print(f"❌ Fallback also failed: {fallback_error}")
+            raise StrategyComparisonError(f"Both comparison and fallback failed: {e}, {fallback_error}")
