@@ -10,6 +10,8 @@ import tempfile
 import os
 import sys
 from datetime import datetime
+import plotly.graph_objects as go
+
 
 # Add src directory to path for backend imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -153,7 +155,7 @@ def preview_uploaded_files(uploaded_files):
     
     for i, uploaded_file in enumerate(uploaded_files, 1):
         with st.expander(f"📄 File {i}: {uploaded_file.name}", expanded=True):
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             
             with col1:
                 st.write(f"**Size:** {uploaded_file.size:,} bytes")
@@ -176,6 +178,7 @@ def preview_uploaded_files(uploaded_files):
                 
             except Exception as e:
                 st.error(f"⚠️ Could not preview file: {str(e)}")
+                
 
 def main():
     """Main Streamlit application."""
@@ -252,10 +255,10 @@ def process_multiple_files(uploaded_files):
         status_text.text("💱 Calculating CGT with RBA exchange rates...")
         progress_bar.progress(70)
         
-        cgt_df, updated_cost_basis, cgt_warnings, processing_logs = calculate_enhanced_cgt_with_rba(
-            fy24_25_sales, 
-            cost_basis_dict, 
-            strategy="tax_optimal"
+        optimized_cgt_df, fifo_cgt_df, comparison_data, updated_cost_basis, cgt_warnings, processing_logs = calculate_enhanced_cgt_with_rba(
+        fy24_25_sales, 
+        cost_basis_dict, 
+        strategy="comparison"
         )
         
         # Step 4: Finalize
@@ -268,7 +271,9 @@ def process_multiple_files(uploaded_files):
                 os.unlink(temp_path)
         
         # Store results in session state
-        st.session_state['cgt_results'] = cgt_df
+        st.session_state['cgt_results'] = optimized_cgt_df  # Use optimized for display
+        st.session_state['fifo_results'] = fifo_cgt_df
+        st.session_state['comparison_data'] = comparison_data
         st.session_state['cost_basis'] = cost_basis_dict
         st.session_state['updated_cost_basis'] = updated_cost_basis
         st.session_state['csv_warnings'] = csv_warnings
@@ -278,8 +283,8 @@ def process_multiple_files(uploaded_files):
         
         # Show success message with details
         with status_container:
-            if len(cgt_df) > 0:
-                st.success(f"🎉 Successfully processed {len(uploaded_files)} files and generated {len(cgt_df)} CGT records!")
+            if len(optimized_cgt_df) > 0:
+                st.success(f"🎉 Successfully processed {len(uploaded_files)} files and generated {len(optimized_cgt_df)} CGT records!")
                 
                 # Show processing summary
                 col1, col2, col3 = st.columns(3)
@@ -333,64 +338,97 @@ def show_results():
     # Summary metrics
     if len(cgt_df) > 0:
         st.subheader("💰 Financial Summary")
-        col1, col2, col3, col4 = st.columns(4)
-        
+        col1, col2, col3 = st.columns(3)
+
         with col1:
-            st.metric("CGT Records", len(cgt_df))
-        
-        with col2:
             total_gain = cgt_df['capital_gain_aud'].sum()
             st.metric("Total Capital Gain", f"${total_gain:,.2f} AUD")
+
+        with col2:
+            total_taxable = cgt_df['taxable_gain_aud'].sum()
+            st.metric("Taxable Capital Gain", f"${total_taxable:,.2f} AUD")
         
         with col3:
+            # Tax calculator
             total_taxable = cgt_df['taxable_gain_aud'].sum()
-            st.metric("Total Taxable Gain", f"${total_taxable:,.2f} AUD")
+            
+            # Income bracket selector
+            tax_bracket = st.selectbox(
+                "Estimated Tax You'll Pay",
+                options=[
+                    "Select your income bracket",
+                    "$18,201 - $45,000 (19%)",
+                    "$45,001 - $120,000 (32.5%)",
+                    "$120,001 - $180,000 (37%)",
+                    "$180,001+ (45%)"
+                ],
+                key="tax_bracket",
+                help="Capital gains are added to your other income. Select the bracket that includes your total income (salary + capital gains)."
+            )
+            
+            # Calculate and display estimated tax
+            if tax_bracket != "Select your income bracket":
+                # Extract tax rate from selection
+                if "19%" in tax_bracket:
+                    rate = 0.19
+                elif "32.5%" in tax_bracket:
+                    rate = 0.325
+                elif "37%" in tax_bracket:
+                    rate = 0.37
+                elif "45%" in tax_bracket:
+                    rate = 0.45
+                
+                estimated_tax = total_taxable * rate
+                st.metric("", f"${estimated_tax:,.0f} AUD")
+            else:
+                st.metric("", "")
+                
         
-        with col4:
-            long_term_count = len(cgt_df[cgt_df['is_long_term']])
-            st.metric("Long-term Holdings", f"{long_term_count}/{len(cgt_df)}")
+        # Get comparison data for result box
+        comparison_data = st.session_state.get('comparison_data', {})
+        fifo_reportable = comparison_data.get('fifo_total_tax', 0)
+        optimized_reportable = comparison_data.get('optimized_total_tax', 0)
+        difference = fifo_reportable - optimized_reportable
         
-        
-        long_term_records = cgt_df[cgt_df['is_long_term']]
-        long_term_gains = long_term_records[long_term_records['capital_gain_aud'] > 0]['capital_gain_aud'].sum()
-        cgt_discount_savings = long_term_gains * 0.5
-        total_records = len(cgt_df)
-        
-        # Only show if there are actual savings
-        if cgt_discount_savings > 0:
+        # Show optimization result above the chart
+        if difference > 0:
             st.success(f"""
-            🎯 **Your Tax Optimization Results:**
+            **Result: You report ${difference:,.0f} less ({(difference/fifo_reportable*100):.1f}% reduction) using tax-optimal strategy**
             
-            💰 **You saved ${cgt_discount_savings:,.2f} AUD** through smart parcel selection!
-            
-            📊 **How we optimized:**
-            • Long-term parcels prioritized: {long_term_count} out of {total_records} transactions
-            • CGT discount applied: 50% reduction on long-term capital gains
-            • Strategy: Tax-optimal selection (long-term first, then highest cost basis)
-            
-            This saved you approximately **{(cgt_discount_savings/total_taxable*100) if total_taxable > 0 else 0:.1f}%** compared to no optimization!
+            **How we optimized:**
+            • Prioritized parcels eligible for 50% CGT discount
+            • Selected higher cost basis parcels to minimize gains
+            • Optimized for Australian tax rules
             """)
-        elif long_term_count > 0:
-            # Handle case where there are long-term holdings but no gains (losses)
-            st.info(f"""
-            🎯 **Your Tax Optimization Results:**
-            
-            📊 **Strategy Applied:**
-            • Long-term parcels prioritized: {long_term_count} out of {total_records} transactions  
-            • Tax-optimal selection used (long-term first, then highest cost basis)
-            • While your portfolio had capital losses this period, the optimization ensures the best tax treatment for future gains
-            """)
-        else:
-            # Handle case with no long-term holdings
-            st.info(f"""
-            🎯 **Your Tax Optimization Results:**
-            
-            📊 **Analysis:**
-            • All {total_records} transactions were short-term holdings (held < 12 months)
-            • No CGT discount available for short-term holdings  
-            • Strategy: Selected highest cost basis parcels first to minimize taxable gains
-            • **Tip:** Hold investments for 12+ months to unlock 50% CGT discount on future sales
-            """)
+        
+    
+        st.subheader("📊 Strategy Comparison")    
+        # Simple Visual Strategy Comparison Chart (Bulletproof Version)
+        st.write("Visual comparison of reportable capital gains by strategy")
+        
+        
+        # Create simple bar chart
+        fig = go.Figure(data=[
+            go.Bar(
+                x=['FIFO', 'Tax-Optimal'],
+                y=[fifo_reportable, optimized_reportable],
+                marker_color=['#ff6b6b', '#51cf66'],  # Red and Green
+                text=[f'${fifo_reportable:,.0f}', f'${optimized_reportable:,.0f}'],
+                textposition='auto'
+            )
+        ])
+        
+        # Basic layout
+        fig.update_layout(
+            title='Reportable Capital Gains Comparison',
+            xaxis_title="Strategy",
+            yaxis_title="Amount (AUD)",
+            height=400
+        )
+        
+        # Display the chart
+        st.plotly_chart(fig, use_container_width=True)
+        
         
         if len(cgt_df) > 0:
             st.subheader("📋 Transaction Breakdown by Symbol")
@@ -444,6 +482,7 @@ def show_results():
         excel_filename = f"cgt_results_{timestamp}.xlsx"
         
         # Create summary data for Sheet 2
+        long_term_count = len(cgt_df[cgt_df['is_long_term']])  # ✅ Define it first
         cgt_discount_savings = 0
         if long_term_count > 0:
             cgt_discount_savings = cgt_df[cgt_df['is_long_term'] & (cgt_df['capital_gain_aud'] > 0)]['capital_gain_aud'].sum() * 0.5
