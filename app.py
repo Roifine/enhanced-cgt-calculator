@@ -13,6 +13,13 @@ from datetime import datetime
 import plotly.graph_objects as go
 import streamlit.components.v1
 
+# Must be the first Streamlit command
+st.set_page_config(
+    page_title="CGT Calculator",
+    page_icon="🧮",
+    layout="wide",
+    initial_sidebar_state="expanded"  # This forces sidebar open by default
+)
 
 # Add src directory to path for backend imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -279,9 +286,7 @@ def sidebar_feedback():
                 
 
 def main():
-    
     """Main Streamlit application."""
-    
     # Page configuration
     st.set_page_config(
         page_title="CGT Calculator",
