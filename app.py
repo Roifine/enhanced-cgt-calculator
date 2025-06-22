@@ -299,6 +299,35 @@ def main():
     
     track_event("calculator_page_view", "user_journey", "streamlit_app")  # ← ADD THIS
     
+    # Hidden admin via URL parameter
+    if st.query_params.get("admin") == "true":
+        admin_pass = st.text_input("Admin Password", type="password")
+        
+        if admin_pass == "cgt2025":  # 🔐 Change this to your secret password!
+            try:
+                feedback_df = pd.read_csv('user_feedback.csv')
+                st.success(f"📊 {len(feedback_df)} feedback entries found")
+                
+                # Show newest first
+                feedback_df = feedback_df.sort_values('timestamp', ascending=False)
+                st.dataframe(feedback_df, use_container_width=True)
+                
+                # Download option
+                csv_data = feedback_df.to_csv(index=False)
+                st.download_button(
+                    "📥 Download All Feedback", 
+                    data=csv_data, 
+                    file_name=f"feedback_export_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
+                
+            except FileNotFoundError:
+                st.info("📝 No feedback submitted yet - file will be created when first feedback is received")
+            except Exception as e:
+                st.error(f"Error loading feedback: {str(e)}")
+        
+        st.stop()  # Don't show the rest of the app in admin mode
+        
     # Header
     st.markdown("<h1 style='text-align: center;'>Shares Tax Calculator</h1>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center;'>Smart, secure, and simple", unsafe_allow_html=True)
