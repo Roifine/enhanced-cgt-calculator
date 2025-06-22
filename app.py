@@ -295,18 +295,34 @@ def main():
     track_event("calculator_page_view", "user_journey", "streamlit_app")  # ← ADD THIS
     
     # Header
-    st.title("🧮 Australian CGT Calculator")
-    st.markdown("**Multi-File Support - Upload Multiple CSVs → Preview → Process → Download Results**")
+    st.markdown("<h1 style='text-align: center;'>🧮 Shares Tax Calculator</h1>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center;'>Smart, secure, and simple", unsafe_allow_html=True)
     st.markdown("---")
     
     # Step 1: File Upload
-    st.header("📁 Step 1: Upload CSV Files")
-    
+    st.header("📁 Step 1: Upload Your Trading Statements")
+
+    # Tax year context
+    st.info("For FY 2024-25 Tax Return** - Upload CSV files showing ALL your US stock trades")    
+    # What you need checklist
+    # What you need checklist
+    st.success("""
+    📋 **What You Need:**
+
+    ✅ **FY 2024-25 complete transactions** (required)
+
+    ✅ **Previous years complete transactions** (optional, great if you bought shares in previous years and you sold them this year)
+
+    ✅ **Required columns:** Symbol, Date, Buy/Sell, Quantity, Price, Commission
+
+    ✅ **We automatically handle:** Different column names, extra columns are fine to leave in
+    """)
+
     uploaded_files = st.file_uploader(
-        "Choose CSV files with your trading data",
+        "Drop your CSV files here",
         type=['csv'],
         accept_multiple_files=True,
-        help="Upload one or more CSV files from your brokers (CommSec, Interactive Brokers, etc.)"
+        help="Trading Activity Statements (not individual trade confirmations) • CSV format • Multiple files OK"
     )
     
     if uploaded_files:
