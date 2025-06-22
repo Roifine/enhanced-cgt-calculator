@@ -11,6 +11,7 @@ import os
 import sys
 from datetime import datetime
 import plotly.graph_objects as go
+import streamlit.components.v1
 
 
 # Add src directory to path for backend imports
@@ -27,6 +28,35 @@ except ImportError as e:
     st.error(f"❌ Backend import error: {e}")
     st.error("Please ensure all backend modules are in the 'src/' directory")
     st.stop()
+
+def track_event(event_name, event_category="user_journey", event_label="", value=None):
+    """Track Google Analytics events in Streamlit"""
+    
+    # Build the gtag event call
+    gtag_params = {
+        'event_category': event_category,
+    }
+    
+    if event_label:
+        gtag_params['event_label'] = event_label
+    
+    if value is not None:
+        gtag_params['value'] = value
+    
+    # Convert params to JavaScript object format
+    params_js = ", ".join([f"'{k}': '{v}'" for k, v in gtag_params.items()])
+    
+    # Inject the tracking script
+    st.components.v1.html(f"""
+    <script>
+    if (typeof gtag !== 'undefined') {{
+        gtag('event', '{event_name}', {{{params_js}}});
+        console.log('📊 Tracked: {event_name}');
+    }} else {{
+        console.log('⚠️ Google Analytics not loaded');
+    }}
+    </script>
+    """, height=0)
 
 def prepare_symbol_table_data(symbol_records):
         """
@@ -178,9 +208,78 @@ def preview_uploaded_files(uploaded_files):
                 
             except Exception as e:
                 st.error(f"⚠️ Could not preview file: {str(e)}")
+
+# Add this function to your app.py file 
+# Place it anywhere before the sidebar_feedback() function
+
+def save_simple_feedback(feedback_text, email=""):
+    """Save simple feedback to CSV file."""
+    import csv
+    import os
+    from datetime import datetime
+    
+    feedback_file = 'user_feedback.csv'
+    file_exists = os.path.isfile(feedback_file)
+    
+    try:
+        with open(feedback_file, 'a', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['timestamp', 'feedback', 'email', 'location']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow({
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'feedback': feedback_text.strip(),
+                'email': email.strip(),
+                'location': 'sidebar'
+            })
+        return True
+    except Exception as e:
+        st.error(f"Error saving feedback: {str(e)}")
+        return False
+
+
+def sidebar_feedback():
+    """Always-available feedback in sidebar"""
+    with st.sidebar:
+        st.markdown("### 💬 Quick Feedback")
+        
+        if 'sidebar_feedback_submitted' not in st.session_state:
+            st.session_state['sidebar_feedback_submitted'] = False
+        
+        if not st.session_state['sidebar_feedback_submitted']:
+            with st.form("sidebar_feedback"):
+                feedback = st.text_area(
+                    "How's the tool?",
+                    placeholder="Works great! Could use...",
+                    height=80
+                )
+                email = st.text_input("Email (optional)", placeholder="you@email.com")
+                
+                
+                # New consent checkbox
+                consent_contact = st.checkbox(
+                    "I agree to be contacted for further feedback",
+                    help="Optional: We may reach out to learn more about your experience"
+                 )
+                
+                if st.form_submit_button("Send", use_container_width=True):
+                    if feedback.strip():
+                        # Save feedback (same function as before)
+                        save_simple_feedback(feedback, email)
+                        st.session_state['sidebar_feedback_submitted'] = True
+                        st.rerun()
+        else:
+            st.success("Thanks! 🙏")
+            if st.button("More feedback?", use_container_width=True):
+                st.session_state['sidebar_feedback_submitted'] = False
+                st.rerun()
                 
 
 def main():
+    
     """Main Streamlit application."""
     
     # Page configuration
@@ -189,6 +288,11 @@ def main():
         page_icon="🧮",
         layout="wide"
     )
+    
+    # feedback form in sidebar
+    sidebar_feedback()
+    
+    track_event("calculator_page_view", "user_journey", "streamlit_app")  # ← ADD THIS
     
     # Header
     st.title("🧮 Australian CGT Calculator")
@@ -301,6 +405,7 @@ def process_multiple_files(uploaded_files):
         st.rerun()
         
     except Exception as e:
+        track_event("processing_error", "errors", str(e)[:50])  # ← ADD THIS (truncate error)
         # Clean up temp files on error
         if 'temp_file_paths' in locals():
             for temp_path in temp_file_paths:
@@ -530,6 +635,8 @@ def show_results():
         
         excel_data = buffer.getvalue()
         
+        track_event("results_with_download_ready", "user_success", "excel_report")
+        
         st.download_button(
             label="📥 Download Complete Report (Excel)",
             data=excel_data,
@@ -538,6 +645,8 @@ def show_results():
             type="primary",
             use_container_width=True
         )
+           
+
         
     else:
         st.warning("⚠️ No CGT records were generated from your files.")
@@ -556,3 +665,4 @@ def show_results():
 
 if __name__ == "__main__":
     main()
+    

@@ -422,26 +422,22 @@
             
             <div class="cta-buttons">
                 <a href="#signup" class="btn-primary">Get Early Access</a>
-                <a href="#founder" class="btn-secondary">Learn More</a>
             </div>
             
             <div class="features">
                 <div class="feature">
-                    <div class="feature-icon">💱</div>
-                    <h3>No More Currency Headaches</h3>
-                    <p>Stop manually looking up exchange rates! Automatically convert all your transactions to Australian dollars using official RBA rates. No more spreadsheet errors or time wasted on calculations.
-                    </p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">🗂️</div>
-                    <h3>Your Investment History, Perfectly Organized</h3>
-                    <p>Track every share you buy and sell, building a complete picture that's always current. When tax time comes, everything's ready instead of scrambling through old statements.</p>
-                </div>
-                <div class="feature">
                     <div class="feature-icon">💵</div>
                     <h3>More Money in Your Pocket</h3>
-                    <p>We build a report showing the best shares to sell - prioritizing 50% tax discounts on shares held 12+ months and your highest-cost shares first. You could save hundreds or thousands in taxes.</p>
+                    <p>Our AI model builds a tax report than minimizes your reported capital gains</p>
                 </div>
+                <div class="feature">
+                    <div class="feature-icon">💱</div>
+                    <h3>No More Currency Headaches</h3>
+                    <p>Automatically convert all your transactions to Australian dollars using official RBA rates
+                    </p>
+                </div>
+
+               
                 <div class="feature">
                     <div class="feature-icon">🔒</div>
                     <h3>Your Data Stays Private</h3>
@@ -450,66 +446,11 @@
             </div>
         </div>
     </div>
-
-    <section class="founder-section" id="founder">
-        <div class="container">
-            <h2 class="section-title">Why I Built This</h2>
-            
-            <div class="founder-content">
-                <div class="founder-card">
-                    <div class="founder-avatar">
-                        <img src="roi.jpg" alt="Roi Fine - Founder" class="founder-photo">
-                    </div>
-                    
-                    <div class="founder-story">
-                        <h3>Hi, I'm Roi Fine <a href="https://www.linkedin.com/in/roi-f-b99a1b11/" target="_blank" style="font-size: 0.8em; color: #38a169; text-decoration: none;">🔗 LinkedIn</a></h3>
-                        <p class="founder-subtitle">Former Product Manager at Atlassian • Economics Graduate • Professional Trader • 20+ Years US Markets Experience</p>
-                        
-                        <div class="story-content">
-                            <p><strong>The Problem Hit Me Personally:</strong></p>
-                            <p>When I moved to Australia 8 years ago, I was shocked by how complex US stock CGT calculations were. Coming from a 20+ year background as a professional trader and long-term US markets investor, plus my product management and economics experience, I thought "surely there's a better way?"</p>
-                            
-                            <p><strong>The Impossible Choice:</strong></p>
-                            <p>I considered switching to Australian stocks, but let's be honest - the returns and opportunities just aren't the same. So like many of you, I stuck with US markets via CommSec International.</p>
-                            
-                            <p><strong>The Expensive Reality:</strong></p>
-                            <p>Every tax season, I'd pay hundreds of dollars to tax agents, only to be told: <em>"You need to organize all this trading data yourself first."</em> Seriously? I'm paying you to tell me to do the hard work myself?</p>
-                            
-                            <p><strong>This Year, I Said Enough:</strong></p>
-                            <p>After spending my 8th year manually organizing CommSec tax files in spreadsheets, I decided to use my product management, economics, and professional trading experience to build a solution. With a name like ROI, I've always been passionate about maximizing returns - and I realized complex tax prep was destroying everyone's ROI! Not just for me, but for every Australian investor facing this same frustrating problem.</p>
-                            
-                            <blockquote>
-                                "If we're going to invest in US markets for better returns, we shouldn't have to suffer through weeks of manual tax prep every year."
-                            </blockquote>
-                            
-                            <p>This tool represents hundreds of hours of development to save our community thousands of hours of manual work. Let's spend our time analyzing investments, not organizing spreadsheets.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="blog-section">
-        <div class="container">
-            <div class="blog-header">
-                <h2>Latest Insights</h2>
-            </div>
-            
-            <div class="blog-article">
-                <h1>US Stock Tax Records: Your Complete Guide for Australian Investors</h1>
-                <p>It's tax time, and you're staring at a pile of broker statements wondering where to start.
-                    If you've invested in US stocks this year, you're probably feeling overwhelmed.</p>
-                <a href="cgt-optimization-strategies.html" class="blog-read-more">Read more →</a>
-            </div>
-        </div>
-    </section>
-
     <div class="calculator-section" id="signup">
         <div class="container">
             <div class="calculator-content">
-                <h2>Calculate Your US Stock Taxes</h2>
-                <p>Enter your information to get early access to our Australian US stocks CGT calculator and eliminate manual currency conversion work.</p>
+                <h2>Get Early Access</h2>
+                <p>Enter your information to get early access to our CGT calculator</p>
                 
                 <div class="privacy-note">
                     <strong>🔒 Your Data is Secure</strong>
@@ -545,19 +486,12 @@
                         
                         <div class="checkbox-group">
                             <div class="checkbox-item">
-                                <input type="checkbox" name="agreement[]" value="contact_feedback" required id="agree1">
-                                <label for="agree1">I'm willing to be contacted and provide feedback about the tool</label>
-                            </div>
-                            <div class="checkbox-item">
                                 <input type="checkbox" name="agreement[]" value="verification" required id="agree2">
                                 <label for="agree2">I understand this tool is for information only and I should consult a licensed tax professional.</label>
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label>What's your biggest US stocks CGT challenge?</label>
-                            <textarea name="cgt_challenge" rows="3" placeholder="e.g., Currency conversion, cost basis tracking, FIFO calculations, etc."></textarea>
-                        </div>
+
                         
                         <button type="submit" class="submit-btn" onclick="gtag('event', 'signup', {'event_category': 'form'});">Get Early Access</button>
 
