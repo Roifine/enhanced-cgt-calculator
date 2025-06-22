@@ -305,31 +305,26 @@ def main():
     st.markdown("---")
     
     # Step 1: File Upload
-    st.header("📁 Step 1: Upload Your Trading Statements")
-
-    # Tax year context
-    st.info("For FY 2024-25 Tax Return** - Upload CSV files showing ALL your US stock trades")    
-    # What you need checklist
-    # What you need checklist
-    st.success("""
-    📋 **What You Need:**
-
-    ✅ **FY 2024-25 complete transactions** (required)
-
-    ✅ **Previous years complete transactions** (optional, great if you bought shares in previous years and you sold them this year)
-
-    ✅ **Required columns:** Symbol, Date, Buy/Sell, Quantity, Price, Commission
-
-    ✅ **We automatically handle:** Different column names, extra columns are fine to leave in
-    """)
-
+    st.header("📁 Step 1: Upload Your Trading Statements for FY 2024-25")
+   
+    
     uploaded_files = st.file_uploader(
         "Drop your CSV files here",
         type=['csv'],
         accept_multiple_files=True,
         help="Trading Activity Statements (not individual trade confirmations) • CSV format • Multiple files OK"
     )
-    
+    # What you need checklist
+    st.success("""
+    📋 **What You Need:**
+
+    ✅ **FY 2024-25 complete transactions with Symbol, Date, Buy/Sell, Quantity, Price (required)
+
+    ✅ **Previous years complete transactions** (optional, great if you bought shares in previous years and you sold them this year)
+
+    ✅ **We automatically handle:** Different column names, extra columns are fine to leave in
+    """)
+
     if uploaded_files:
         # Show file info summary
         total_size = sum(f.size for f in uploaded_files)
