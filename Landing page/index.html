@@ -122,76 +122,87 @@
         }
         .feature p { color: #718096; font-size: 1rem; }
         
-        /* Founder Section */
-        .founder-section {
-            padding: 80px 20px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        }
-        
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #2d3748;
+       /* Video Demo Section */
+        .video-section { 
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
+            padding: 80px 0; 
         }
 
-        .founder-content {
-            max-width: 800px;
-            margin: 40px auto 0;
+        .video-content { 
+            text-align: center; 
+            max-width: 900px; 
+            margin: 0 auto; 
         }
 
-        .founder-card {
+        .video-content h2 { 
+            font-size: 2.5rem; 
+            font-weight: 700; 
+            margin-bottom: 20px; 
+            color: #2d3748; 
+        }
+
+        .video-content p { 
+            font-size: 1.2rem; 
+            color: #718096; 
+            margin-bottom: 40px; 
+            max-width: 700px; 
+            margin-left: auto; 
+            margin-right: auto; 
+        }
+
+        .video-container {
             background: white;
             border-radius: 20px;
-            padding: 50px;
+            padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 40px;
         }
 
-        .founder-card::before {
-            content: '';
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .video-wrapper iframe {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #38a169, #2f855a);
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
         }
 
-        .founder-avatar {
-            text-align: center;
-            margin-bottom: 30px;
+        .video-features {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
         }
 
-        .founder-photo {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            margin: 0 auto;
-            display: block;
-            object-fit: cover;
-            box-shadow: 0 15px 40px rgba(56, 161, 105, 0.3);
-            border: 4px solid white;
-        }
-
-        .founder-story h3 {
-            text-align: center;
-            font-size: 2rem;
+        .video-feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            font-weight: 600;
             color: #2d3748;
-            margin-bottom: 10px;
+            transition: transform 0.2s;
         }
 
-        .founder-subtitle {
-            text-align: center;
-            color: #718096;
-            font-size: 1.1rem;
-            margin-bottom: 30px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 20px;
+        .video-feature:hover {
+            transform: translateY(-2px);
         }
 
+        .video-feature-icon {
+            font-size: 1.2rem;
+        }
         .story-content p {
             margin-bottom: 20px;
             line-height: 1.7;
@@ -389,6 +400,20 @@
             blockquote { font-size: 1rem; }
             .nav-links { display: none; } /* Hide nav links on mobile for now */
             .blog-article h1 { font-size: 1.5rem; }
+            .video-section { padding: 60px 0; }
+            .video-content h2 { font-size: 2rem; }
+            .video-content p { font-size: 1.1rem; margin-bottom: 30px; }
+            .video-container { padding: 20px; margin: 0 20px 30px; }
+            .video-features { 
+                flex-direction: column; 
+                align-items: center; 
+                gap: 15px; 
+                margin: 0 20px; 
+            }
+            .video-feature { 
+                padding: 12px 20px; 
+                font-size: 0.95rem; 
+    }
         }
         
         @media (min-width: 1200px) {
@@ -424,6 +449,7 @@
                 <a href="#signup" class="btn-primary">Get Early Access</a>
             </div>
             
+            
             <div class="features">
                 <div class="feature">
                     <div class="feature-icon">💵</div>
@@ -446,6 +472,48 @@
             </div>
         </div>
     </div>
+
+    <div class="video-section">
+        <div class="container">
+            <div class="video-content">
+                <h2>See How It Works</h2>
+                <p>Watch a quick demo of how our CGT calculator processes your trading data and optimizes your tax reporting</p>
+                
+                <div class="video-container">
+                    <div class="video-wrapper">
+                        <iframe 
+                            src="https://www.youtube.com/embed/U2blDhOMJSc" 
+                            title="CGT Calculator Demo"
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+                
+                <div class="video-features">
+                    <div class="video-feature">
+                        <span class="video-feature-icon">📁</span>
+                        <span>Upload your CSV files</span>
+                    </div>
+                    <div class="video-feature">
+                        <span class="video-feature-icon">⚡</span>
+                        <span>Automatic processing</span>
+                    </div>
+                    <div class="video-feature">
+                        <span class="video-feature-icon">💰</span>
+                        <span>Tax-optimized results</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 🎥 VIDEO SECTION ENDS HERE 🎥 -->
+
+    <div class="calculator-section" id="signup">
+    <!-- ⬇️ Signup form starts here -->
+
+
     <div class="calculator-section" id="signup">
         <div class="container">
             <div class="calculator-content">
