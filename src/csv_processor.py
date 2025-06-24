@@ -21,6 +21,26 @@ class StatementProcessor:
     - Maintains chronological order for tax optimization
     - Handles multiple date formats and validates data
     """
+    def clean_currency_value(self,value):
+        """Clean currency values by removing $ signs, commas, and converting to float."""
+        if pd.isna(value) or value is None:
+            return 0.0
+        
+        # Convert to string and clean
+        cleaned = str(value).strip()
+        
+        # Remove currency symbols and formatting
+        cleaned = cleaned.replace('$', '').replace(',', '').replace(' ', '')
+        
+        # Handle empty strings
+        if not cleaned or cleaned == '':
+            return 0.0
+        
+        try:
+            return float(cleaned)
+        except (ValueError, TypeError):
+            return 0.0
+
     
     def __init__(self):
         self.processing_log = []
@@ -107,6 +127,7 @@ class StatementProcessor:
             self._log(error_msg)
             self.warnings.append(error_msg)
             raise
+    
     
     def _load_and_validate_csv(self, csv_file) -> pd.DataFrame:
         """Load CSV and validate required columns."""
@@ -210,6 +231,8 @@ class StatementProcessor:
             
             # Common CSV date formats - UPDATED ORDER (most likely first)
             date_formats = [
+                "%d-%b-%y",      # 28-Nov-05, 13-Jul-09  ← ADD THIS
+                "%d-%b-%Y",      # 28-Nov-2005
                 "%Y-%m-%d %H:%M:%S",  # 2023-09-18 10:39:42 (your actual format!)
                 "%Y-%m-%d",     # 2024-12-19 (ISO)
                 "%d.%m.%y",     # 19.12.24, 17.11.21 (existing)
@@ -281,7 +304,7 @@ class StatementProcessor:
         self._log(f"   📊 Found transaction types: {list(unique_types)}")
         
         # Identify BUY transactions
-        buy_patterns = ['BUY', 'PURCHASE', 'PURCHASED', 'ACQUIRED', 'B', 'BOUGHT', 'LONG']
+        buy_patterns = ['BUY', 'PURCHASE', 'PURCHASED', 'ACQUIRED', 'B', 'BOUGHT', 'LONG', 'PURCH', 'ADDED']
         buy_mask = df['type_normalized'].isin(buy_patterns)
         buy_transactions = df[buy_mask].copy()
         
@@ -290,6 +313,15 @@ class StatementProcessor:
         sell_mask = df['type_normalized'].isin(sell_patterns)
         sell_transactions = df[sell_mask].copy()
         
+        # 🔧 FIX NEGATIVE QUANTITIES FOR SALES - ADD THIS SECTION:
+        if len(sell_transactions) > 0:
+        # Check for negative quantities in sales
+            negative_count = (sell_transactions['quantity'] < 0).sum()
+            if negative_count > 0:
+                self._log(f"   🔧 Found {negative_count} negative sale quantities, converting to positive")
+                # Convert negative quantities to positive
+                sell_transactions['quantity'] = sell_transactions['quantity'].abs()
+            
         # Log results
         other_transactions = len(df) - len(buy_transactions) - len(sell_transactions)
         
@@ -375,12 +407,12 @@ class StatementProcessor:
             symbol_buys_sorted = symbol_buys.sort_values('datetime')
             
             parcels = []
-            for _, transaction in symbol_buys_sorted.iterrows():
-                
+            for _, transaction in symbol_buys_sorted.iterrows():    
+    
                 # Handle missing values with sensible defaults and fix negative commissions
-                units = float(transaction['quantity']) if pd.notna(transaction['quantity']) else 0.0
-                price = float(transaction['price']) if pd.notna(transaction['price']) else 0.0
-                commission_raw = float(transaction['commission']) if pd.notna(transaction['commission']) else 0.0
+                units = float(transaction['quantity']) if pd.notna(transaction['quantity']) else 0.0  # Quantity usually no $ sign
+                price = self.clean_currency_value(transaction['price']) if pd.notna(transaction['price']) else 0.0
+                commission_raw = self.clean_currency_value(transaction['commission']) if pd.notna(transaction['commission']) else 0.0
                 
                 # Fix negative commission issue (brokers often show commissions as negative)
                 commission = abs(commission_raw) if commission_raw != 0 else 0.0
