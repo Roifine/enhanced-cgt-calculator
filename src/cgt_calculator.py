@@ -18,6 +18,29 @@ import traceback
 from tax_optimizer import optimize_sale_for_cgt
 from currency_converter import RBAExchangeRateConverter
 
+def safe_currency_to_float(value):
+    """Convert currency value to float, handling both cleaned and raw formats."""
+    
+    # If it's already a number, just convert to float
+    if isinstance(value, (int, float)):
+        return float(value)
+    
+    # If it's a string, clean it first then convert
+    if isinstance(value, str):
+        cleaned = value.strip().replace('$', '').replace(',', '').replace(' ', '')
+        if not cleaned or cleaned == '':
+            return 0.0
+        try:
+            return float(cleaned)
+        except (ValueError, TypeError):
+            return 0.0
+    
+    # Handle None/NaN
+    if pd.isna(value) or value is None:
+        return 0.0
+    
+    # Last resort
+    return float(value)
 
 def safe_commission(value, default_missing=30.0, min_reasonable=0.0):
     """Handle commission with reasonable defaults"""
@@ -106,8 +129,8 @@ class EnhancedCGTCalculatorWithRBA:
                 symbol = sale['Symbol']
                 sale_date = pd.to_datetime(sale['Trade Date'])
                 units_sold = float(sale['Quantity'])
-                sale_price_usd = float(sale['Price (USD)'].replace('$', '').replace(',', ''))
-                sale_commission_usd = safe_commission(sale['Commission (USD)'])
+                sale_price_usd = safe_currency_to_float(sale['Price (USD)'])
+                sale_commission_usd = safe_currency_to_float(sale.get('Commission (USD)', 0.0))
                 
                 self._log(f"   📋 {symbol}: {units_sold} units @ ${sale_price_usd:.2f} USD on {sale_date.strftime('%Y-%m-%d')}")
                 self._log(f"   💰 Sale commission: ${sale_commission_usd:.2f} USD")
