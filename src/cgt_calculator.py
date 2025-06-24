@@ -106,7 +106,7 @@ class EnhancedCGTCalculatorWithRBA:
                 symbol = sale['Symbol']
                 sale_date = pd.to_datetime(sale['Trade Date'])
                 units_sold = float(sale['Quantity'])
-                sale_price_usd = float(sale['Price (USD)'])
+                sale_price_usd = float(sale['Price (USD)'].replace('$', '').replace(',', ''))
                 sale_commission_usd = safe_commission(sale['Commission (USD)'])
                 
                 self._log(f"   📋 {symbol}: {units_sold} units @ ${sale_price_usd:.2f} USD on {sale_date.strftime('%Y-%m-%d')}")
