@@ -611,7 +611,14 @@ def _generate_strategy_comparison(fifo_cgt_df, optimized_cgt_df):
     Returns:
         Dictionary with comparison metrics
     """
-    
+    if len(fifo_cgt_df) == 0 and len(optimized_cgt_df) == 0:
+        return {
+            'fifo_total_tax': 0,
+            'optimized_total_tax': 0, 
+            'tax_savings': 0,
+            'percentage_saved': 0,
+            'message': 'No sales found in target period'
+        }
     # Calculate total tax liability for each strategy
     fifo_total_tax = fifo_cgt_df['taxable_gain_aud'].sum()
     optimized_total_tax = optimized_cgt_df['taxable_gain_aud'].sum()

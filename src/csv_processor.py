@@ -341,6 +341,17 @@ class StatementProcessor:
         
         return buy_transactions, sell_transactions
     
+    def _is_date_in_fy24_25(self, parsed_date_str):
+        """Check if a parsed date string falls within FY24-25."""
+        try:
+            dt = datetime.strptime(parsed_date_str, "%d.%m.%y")
+            # Handle 2-digit years
+            if dt.year < 2000:
+                dt = dt.replace(year=dt.year + 2000 if dt.year < 50 else dt.year + 1900)
+            return self.fy_start <= dt <= self.fy_end
+        except:
+            return False
+
     def _filter_fy24_25_sales(self, sell_transactions: pd.DataFrame) -> pd.DataFrame:
         """Filter SELL transactions to FY24-25 only."""
         
@@ -348,14 +359,15 @@ class StatementProcessor:
             self._log("⚠️ No sell transactions found")
             return sell_transactions
         
-        # Filter by datetime column for FY24-25
-        fy24_25_mask = (
-            (sell_transactions['datetime'] >= self.fy_start) &
-            (sell_transactions['datetime'] <= self.fy_end)
+        # Create the mask
+        fy24_25_mask = sell_transactions['parsed_date'].apply(
+            lambda x: self._is_date_in_fy24_25(x) if x else False
         )
         
+        # Apply the mask
         fy24_25_sales = sell_transactions[fy24_25_mask].copy()
         
+        # Log results
         self._log(f"📅 FY24-25 sales filter:")
         self._log(f"   Total sales: {len(sell_transactions)}")
         self._log(f"   FY24-25 sales: {len(fy24_25_sales)}")
