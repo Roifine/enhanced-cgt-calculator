@@ -100,12 +100,12 @@ def create_symbol_timeline(symbol_records):
         
         # Buy event
         buy_hover = (
-            f"<b>ORIGINAL PURCHASE</b><br>"
-            f"<b>Date:</b> {buy_date.strftime('%d %b %Y')}<br>"
-            f"<b>Units purchased:</b> {units:.0f}<br>"
-            f"<b>Price:</b> ${buy_price_usd:.2f} USD<br>"
-            f"<b>Total cost:</b> ${buy_price_usd * units:,.0f} USD<br>"
-            f"<b>Used for this sale:</b> {units:.0f} units"
+            f"<b>PURCHASE PARCEL PORTION</b><br>"
+            f"<b>Original purchase date:</b> {buy_date.strftime('%d %b %Y')}<br>"
+            f"<b>Purchase price:</b> ${buy_price_usd:.2f} USD per unit<br>"
+            f"<b>Units from this parcel:</b> {units:.0f}<br>"
+            f"<b>Cost for these units:</b> ${buy_price_usd * units:,.0f} USD<br>"
+            f"<b>Used for sale on:</b> {sell_date.strftime('%d %b %Y')}"
         )
         
         buy_events.append({
@@ -118,14 +118,14 @@ def create_symbol_timeline(symbol_records):
         
         # Sell event
         sell_hover = (
-            f"<b>SELL EVENT (PARCEL PORTION)</b><br>"
-            f"<b>Date:</b> {sell_date.strftime('%d %b %Y')}<br>"
-            f"<b>Units (from this parcel):</b> {units:.0f}<br>"
-            f"<b>Price:</b> ${sell_price_usd:.2f} USD<br>"
-            f"<b>Total:</b> ${sell_price_usd * units:,.0f} USD<br>"
-            f"<b>From purchase:</b> {buy_date.strftime('%d %b %Y')}<br>"
-            f"<b>Held:</b> {holding_months:.1f} months<br>"
-            f"<b>Gain:</b> ${record['capital_gain_aud']:.0f} AUD"
+            f"<b>SALE PARCEL PORTION</b><br>"
+            f"<b>Sale date:</b> {sell_date.strftime('%d %b %Y')}<br>"
+            f"<b>Units sold from this parcel:</b> {units:.0f}<br>"
+            f"<b>Sale price:</b> ${sell_price_usd:.2f} USD per unit<br>"
+            f"<b>Sale proceeds:</b> ${sell_price_usd * units:,.0f} USD<br>"
+            f"<b>Originally purchased:</b> {buy_date.strftime('%d %b %Y')} @ ${buy_price_usd:.2f}<br>"
+            f"<b>Held for:</b> {holding_months:.1f} months<br>"
+            f"<b>Capital gain:</b> ${record['capital_gain_aud']:.0f} AUD"
         )
         
         sell_events.append({
@@ -137,10 +137,42 @@ def create_symbol_timeline(symbol_records):
             'is_long_term': record['is_long_term']
         })
     
-    # Add buy events (blue dots)
+    # Function to calculate y-positions to avoid overlapping dots
+    def calculate_y_positions(events):
+        """Calculate y positions to avoid overlapping dots on same dates."""
+        if not events:
+            return []
+        
+        # Group events by date
+        date_groups = {}
+        for i, event in enumerate(events):
+            date_str = event['date'].strftime('%Y-%m-%d')
+            if date_str not in date_groups:
+                date_groups[date_str] = []
+            date_groups[date_str].append(i)
+        
+        # Calculate y positions
+        y_positions = [0] * len(events)
+        offset_step = 0.15  # Vertical spacing between overlapping dots
+        
+        for date_str, indices in date_groups.items():
+            if len(indices) == 1:
+                # Single dot on this date - keep at center (y=0)
+                y_positions[indices[0]] = 0
+            else:
+                # Multiple dots on same date - spread them vertically
+                num_dots = len(indices)
+                # Center the group around y=0
+                start_y = -(num_dots - 1) * offset_step / 2
+                for i, idx in enumerate(indices):
+                    y_positions[idx] = start_y + (i * offset_step)
+        
+        return y_positions
+    
+    # Add buy events (blue dots) with offset positioning
     if buy_events:
         buy_dates = [event['date'] for event in buy_events]
-        buy_y = [0] * len(buy_events)  # All on same y-level
+        buy_y = calculate_y_positions(buy_events)
         buy_hovers = [event['hover'] for event in buy_events]
         
         fig.add_trace(go.Scatter(
@@ -159,10 +191,10 @@ def create_symbol_timeline(symbol_records):
             showlegend=False
         ))
     
-    # Add sell events (red/green dots based on long-term)
+    # Add sell events (red/green dots based on long-term) with offset positioning
     if sell_events:
         sell_dates = [event['date'] for event in sell_events]
-        sell_y = [0] * len(sell_events)  # All on same y-level
+        sell_y = calculate_y_positions(sell_events)
         sell_hovers = [event['hover'] for event in sell_events]
         sell_colors = ['#51cf66' if event['is_long_term'] else '#ff6b6b' for event in sell_events]
         
@@ -196,7 +228,7 @@ def create_symbol_timeline(symbol_records):
             showticklabels=False,
             showgrid=False,
             zeroline=False,
-            range=[-0.5, 0.5]  # Center the dots
+            range=[-0.6, 0.6]  # Expanded range for vertically offset dots
         ),
         height=150,  # Fixed compact height
         margin=dict(l=20, r=20, t=20, b=50),
@@ -716,8 +748,8 @@ def show_results():
                         st.plotly_chart(timeline_fig, use_container_width=True)
                         
                         # Add explanatory text
-                        st.caption("🔵 Blue = Original purchases • 🟢 Green = Long-term sales (>12 months) • 🔴 Red = Short-term sales (<12 months)")
-                        st.caption("📝 **Note:** Each dot represents a portion from a specific purchase parcel. Large sales may show multiple dots if shares came from different purchase dates. Blue dots show the original purchase that provided shares for each sale portion. Hover for details.")
+                        st.caption("🔵 Blue = Purchase parcel portions • 🟢 Green = Long-term sales (>12 months) • 🔴 Red = Short-term sales (<12 months)")
+                        st.caption("📝 **Important:** Each dot shows a parcel portion, not a complete transaction. If you sold 113 units, you might see multiple dots (e.g., 93 + 20) if shares came from different purchase dates. The 'Original Transaction Summary' below shows the actual transaction totals. Hover on dots for parcel details.")
                     else:
                         st.warning("Could not create timeline for this symbol")
         # Results table
