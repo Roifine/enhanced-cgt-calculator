@@ -65,42 +65,153 @@ def track_event(event_name, event_category="user_journey", event_label="", value
     </script>
     """, height=0)
 
-def prepare_symbol_table_data(symbol_records):
-        """
-        Prepare symbol records for display table with proper formatting.
-        
-        Args:
-            symbol_records: DataFrame subset for one symbol
-            
-        Returns:
-            DataFrame formatted for display
-        """
+def create_symbol_timeline(symbol_records):
+    """
+    Create interactive timeline with buy and sell event dots.
     
-        # Create display dataframe
-        display_df = pd.DataFrame()
+    Args:
+        symbol_records: DataFrame subset for one symbol
         
-        # Format Sale Date
-        display_df['Sale Date'] = symbol_records['sale_date'].apply(format_date_for_display)
+    Returns:
+        Plotly figure object
+    """
+    
+    if len(symbol_records) == 0:
+        return None
+    
+    # Create timeline figure
+    fig = go.Figure()
+    
+    # Collect all buy and sell events
+    buy_events = []
+    sell_events = []
+    
+    for idx, record in symbol_records.iterrows():
+        # Extract dates and USD prices
+        buy_date = pd.to_datetime(record['purchase_date'])
+        sell_date = pd.to_datetime(record['sale_date'])
+        buy_price_usd = record.get('buy_unit_price_usd', 0)
+        sell_price_usd = record.get('sale_unit_price_usd', 0)
+        units = record['units_sold']
         
-        # Units Sold (keep as number for proper sorting)
-        display_df['Units Sold'] = symbol_records['units_sold']
+        # Calculate holding period for context
+        holding_days = (sell_date - buy_date).days
+        holding_months = round(holding_days / 30.44, 1)
         
-        # Total Proceeds AUD (formatted as currency string)
-        display_df['Total Proceeds AUD'] = symbol_records['net_proceeds_aud'].apply(format_currency_aud)
+        # Buy event
+        buy_hover = (
+            f"<b>ORIGINAL PURCHASE</b><br>"
+            f"<b>Date:</b> {buy_date.strftime('%d %b %Y')}<br>"
+            f"<b>Units purchased:</b> {units:.0f}<br>"
+            f"<b>Price:</b> ${buy_price_usd:.2f} USD<br>"
+            f"<b>Total cost:</b> ${buy_price_usd * units:,.0f} USD<br>"
+            f"<b>Used for this sale:</b> {units:.0f} units"
+        )
         
-        # Cost AUD (formatted as currency string)
-        display_df['Cost AUD'] = symbol_records['cost_basis_aud'].apply(format_currency_aud)
+        buy_events.append({
+            'date': buy_date,
+            'price': buy_price_usd,
+            'units': units,
+            'hover': buy_hover,
+            'parcel_id': idx
+        })
         
-        # LONG TERM (Yes/No)
-        display_df['LONG TERM'] = symbol_records['is_long_term'].apply(lambda x: 'Yes' if x else 'No')
+        # Sell event
+        sell_hover = (
+            f"<b>SELL EVENT (PARCEL PORTION)</b><br>"
+            f"<b>Date:</b> {sell_date.strftime('%d %b %Y')}<br>"
+            f"<b>Units (from this parcel):</b> {units:.0f}<br>"
+            f"<b>Price:</b> ${sell_price_usd:.2f} USD<br>"
+            f"<b>Total:</b> ${sell_price_usd * units:,.0f} USD<br>"
+            f"<b>From purchase:</b> {buy_date.strftime('%d %b %Y')}<br>"
+            f"<b>Held:</b> {holding_months:.1f} months<br>"
+            f"<b>Gain:</b> ${record['capital_gain_aud']:.0f} AUD"
+        )
         
-        # Capital Gain AUD (formatted as currency string)
-        display_df['Capital Gain (AUD)'] = symbol_records['capital_gain_aud'].apply(format_currency_aud)
+        sell_events.append({
+            'date': sell_date,
+            'price': sell_price_usd,
+            'units': units,
+            'hover': sell_hover,
+            'parcel_id': idx,
+            'is_long_term': record['is_long_term']
+        })
+    
+    # Add buy events (blue dots)
+    if buy_events:
+        buy_dates = [event['date'] for event in buy_events]
+        buy_y = [0] * len(buy_events)  # All on same y-level
+        buy_hovers = [event['hover'] for event in buy_events]
         
-        # Sort by sale date (most recent first)
-        display_df = display_df.sort_values('Sale Date', ascending=False)
+        fig.add_trace(go.Scatter(
+            x=buy_dates,
+            y=buy_y,
+            mode='markers',
+            marker=dict(
+                size=15,
+                color='#2E86AB',  # Blue for buy
+                symbol='circle',
+                line=dict(width=2, color='white')
+            ),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=buy_hovers,
+            name='Buy Events',
+            showlegend=False
+        ))
+    
+    # Add sell events (red/green dots based on long-term)
+    if sell_events:
+        sell_dates = [event['date'] for event in sell_events]
+        sell_y = [0] * len(sell_events)  # All on same y-level
+        sell_hovers = [event['hover'] for event in sell_events]
+        sell_colors = ['#51cf66' if event['is_long_term'] else '#ff6b6b' for event in sell_events]
         
-        return display_df
+        fig.add_trace(go.Scatter(
+            x=sell_dates,
+            y=sell_y,
+            mode='markers',
+            marker=dict(
+                size=15,
+                color=sell_colors,
+                symbol='circle',
+                line=dict(width=2, color='white')
+            ),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=sell_hovers,
+            name='Sell Events',
+            showlegend=False
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        title="",
+        xaxis=dict(
+            title="Timeline",
+            type='date',
+            showgrid=True,
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title="",
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+            range=[-0.5, 0.5]  # Center the dots
+        ),
+        height=150,  # Fixed compact height
+        margin=dict(l=20, r=20, t=20, b=50),
+        hovermode='closest',
+        plot_bgcolor='white',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    return fig
 
 
 def format_date_for_display(date_value):
@@ -581,8 +692,8 @@ def show_results():
         
         
         if len(cgt_df) > 0:
-            st.subheader("📋 Transaction Breakdown by Symbol")
-            st.write("Detailed view of each symbol's transactions and tax calculations:")
+            st.subheader("📊 Transaction Timeline by Symbol")
+            st.write("Visual timeline showing when you bought and sold each parcel, with buy/sell prices in USD:")
             
             # Group CGT data by symbol
             for symbol in sorted(cgt_df['symbol'].unique()):
@@ -592,31 +703,44 @@ def show_results():
                 total_capital_gain = symbol_records['capital_gain_aud'].sum()
                 transaction_count = len(symbol_records)
                 
+                # Calculate summary stats
+                long_term_count = sum(symbol_records['is_long_term'])
+                short_term_count = transaction_count - long_term_count
+                
                 # Create expandable section for each symbol
-                with st.expander(f"**{symbol}** - {transaction_count} Transaction{'s' if transaction_count != 1 else ''} (Capital gain to report ${total_capital_gain:.1f})", expanded=True):
+                with st.expander(f"**{symbol}** - {transaction_count} Transaction{'s' if transaction_count != 1 else ''} (Capital gain to report ${total_capital_gain:.0f} AUD)", expanded=True):
                     
-                    # Prepare data for display
-                    display_data = prepare_symbol_table_data(symbol_records)
-                    
-                    # Display the table
-                    st.dataframe(
-                        display_data,
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            "Sale Date": st.column_config.TextColumn("Sale Date", width="medium"),
-                            "Units Sold": st.column_config.NumberColumn("Units Sold", format="%.0f"),
-                            "Total Proceeds AUD": st.column_config.TextColumn("Total Proceeds AUD", width="medium"),
-                            "Cost AUD": st.column_config.TextColumn("Cost AUD", width="medium"),
-                            "LONG TERM": st.column_config.TextColumn("LONG TERM", width="small"),
-                            "Capital Gain (AUD)": st.column_config.TextColumn("Capital Gain (AUD)", width="medium")
-                        }
-                    )
+                    # Create and display timeline
+                    timeline_fig = create_symbol_timeline(symbol_records)
+                    if timeline_fig:
+                        st.plotly_chart(timeline_fig, use_container_width=True)
+                        
+                        # Add explanatory text
+                        st.caption("🔵 Blue = Original purchases • 🟢 Green = Long-term sales (>12 months) • 🔴 Red = Short-term sales (<12 months)")
+                        st.caption("📝 **Note:** Each dot represents a portion from a specific purchase parcel. Large sales may show multiple dots if shares came from different purchase dates. Blue dots show the original purchase that provided shares for each sale portion. Hover for details.")
+                    else:
+                        st.warning("Could not create timeline for this symbol")
         # Results table
         st.subheader("📋 Detailed CGT Records")
         
         # Add some helpful info about the table
         st.write("Each row represents a portion of a parcel sold, optimized for minimum tax liability.")
+        
+        # Show transaction summary by sale date
+        if len(cgt_df) > 0:
+            st.write("**Original Transaction Summary:**")
+            transaction_summary = cgt_df.groupby(['symbol', 'sale_date']).agg({
+                'units_sold': 'sum',
+                'sale_unit_price_usd': 'first'
+            }).reset_index()
+            
+            summary_text = []
+            for _, row in transaction_summary.iterrows():
+                sale_date = pd.to_datetime(row['sale_date']).strftime('%d %b %Y')
+                summary_text.append(f"• **{row['symbol']}**: {row['units_sold']:.0f} units @ ${row['sale_unit_price_usd']:.2f} on {sale_date}")
+            
+            for text in summary_text:
+                st.write(text)
         
         st.dataframe(
             cgt_df,

@@ -111,16 +111,23 @@ class StatementProcessor:
             # 9. Build cost basis JSON from ALL buys (chronologically ordered)
             cost_basis_dict = self._build_cost_basis_json(all_buy_transactions)
             
-            # 10. Validate sufficient shares for each sale
-            self._validate_sufficient_shares(cost_basis_dict, fy24_25_sales)
+            # 10. Get historical sales (exclude FY24-25 sales from all sales)
+            historical_sales = all_sell_transactions[~all_sell_transactions.index.isin(fy24_25_sales.index)]
             
-            # 11. Summary
-            self._log_processing_summary(cost_basis_dict, fy24_25_sales)
+            # 11. Apply historical sales to cost basis (FIFO consumption)
+            adjusted_cost_basis_dict = self._apply_historical_sales_to_cost_basis(cost_basis_dict, historical_sales)
             
-            # 12. Convert column names for CGT calculator compatibility (at the very end)
+            # 12. Validate sufficient shares for each sale using adjusted cost basis
+            self._validate_sufficient_shares(adjusted_cost_basis_dict, fy24_25_sales)
+            
+            # 13. Summary
+            self._log_processing_summary(adjusted_cost_basis_dict, fy24_25_sales)
+            
+            # 14. Convert column names for CGT calculator compatibility (at the very end)
             fy24_25_sales_for_cgt = self._prepare_sales_for_cgt_calculator(fy24_25_sales)
             
-            return cost_basis_dict, fy24_25_sales_for_cgt, self.warnings, self.processing_log
+            # Return the adjusted cost basis that accounts for historical sales
+            return adjusted_cost_basis_dict, fy24_25_sales_for_cgt, self.warnings, self.processing_log
             
         except Exception as e:
             error_msg = f"❌ Processing failed: {str(e)}"
@@ -453,6 +460,57 @@ class StatementProcessor:
         
         return cost_basis_dict
     
+    def _apply_historical_sales_to_cost_basis(self, cost_basis_dict: Dict, all_sell_transactions: pd.DataFrame) -> Dict:
+        """Apply FIFO consumption of historical sales to reduce cost basis units."""
+        
+        self._log("🔧 Applying historical sales to cost basis using FIFO...")
+        
+        if all_sell_transactions.empty:
+            self._log("   ✅ No historical sales to apply")
+            return cost_basis_dict
+        
+        # Create a deep copy to avoid modifying the original
+        adjusted_cost_basis = {}
+        for symbol, parcels in cost_basis_dict.items():
+            adjusted_cost_basis[symbol] = [parcel.copy() for parcel in parcels]
+        
+        # Group historical sales by symbol and sort chronologically
+        for symbol, symbol_sales in all_sell_transactions.groupby('symbol'):
+            if symbol not in adjusted_cost_basis:
+                continue
+                
+            # Sort sales chronologically
+            symbol_sales_sorted = symbol_sales.sort_values('datetime')
+            
+            total_historical_sold = 0
+            
+            # Apply each historical sale using FIFO
+            for _, sale in symbol_sales_sorted.iterrows():
+                sale_quantity = float(sale['quantity'])
+                total_historical_sold += sale_quantity
+                remaining_to_consume = sale_quantity
+                
+                # Consume from cost basis parcels in FIFO order
+                for parcel in adjusted_cost_basis[symbol]:
+                    if remaining_to_consume <= 0:
+                        break
+                        
+                    if parcel['units'] > 0:
+                        consumed = min(parcel['units'], remaining_to_consume)
+                        parcel['units'] -= consumed
+                        remaining_to_consume -= consumed
+                
+                # If we couldn't consume all shares, we have an overselling situation
+                if remaining_to_consume > 0:
+                    self._log(f"   ⚠️ {symbol}: Historical overselling detected - couldn't consume {remaining_to_consume} shares from sale on {sale['parsed_date']}")
+            
+            # Log the adjustment for this symbol
+            if total_historical_sold > 0:
+                remaining_units = sum(parcel['units'] for parcel in adjusted_cost_basis[symbol])
+                self._log(f"   📊 {symbol}: {total_historical_sold} historical shares consumed, {remaining_units} remaining")
+        
+        return adjusted_cost_basis
+
     def _validate_sufficient_shares(self, cost_basis_dict: Dict, fy24_25_sales: pd.DataFrame):
         """Validate that we have sufficient shares for each sale."""
         

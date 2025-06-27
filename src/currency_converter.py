@@ -181,7 +181,7 @@ class RBAExchangeRateConverter:
         if transaction_date.year < 2018:
             historical_rate = 0.75  # Approximate AUD/USD rate for 2005-2017 period
             self._log(f"   📅 Using historical fallback rate for {date_key}: {historical_rate}")
-        return historical_rate, True
+            return historical_rate, True
         
         # If no rate found within lookback period
         error_msg = f"❌ No RBA rate available for {date_key} or {max_lookback} days prior"
