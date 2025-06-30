@@ -310,6 +310,12 @@ class EnhancedCGTCalculatorWithRBA:
         cgt_discount_rate = 0.5 if is_long_term else 0.0
         taxable_gain_aud = capital_gain_aud * (1 - cgt_discount_rate) if capital_gain_aud > 0 else capital_gain_aud
         
+        # Calculate USD values for export
+        buy_commission_usd = parcel.get('commission_usd', parcel['commission_aud'] / parcel.get('exchange_rate_buy', 1.0))
+        allocated_sale_commission_usd = sale_commission_usd * commission_proportion
+        cost_basis_usd = (units_sold * parcel['price_usd']) + buy_commission_usd
+        net_proceeds_usd = (units_sold * sale_price_usd) - allocated_sale_commission_usd
+        
         return {
             'symbol': symbol,
             'sale_date': sale_date,
@@ -326,13 +332,18 @@ class EnhancedCGTCalculatorWithRBA:
             'capital_gain_aud': capital_gain_aud,
             'cgt_discount_rate': cgt_discount_rate,
             'taxable_gain_aud': taxable_gain_aud,
-            'buy_unit_price_usd': parcel['price_usd'],              # NEW FIELD
-            'sale_unit_price_usd': sale_price_usd,                  # NEW FIELD
-            'exchange_rate_buy': parcel['exchange_rate_buy'],       # NEW FIELD  
-            'exchange_rate_sell': exchange_rate, 
+            'buy_unit_price_usd': parcel['price_usd'],
+            'sale_unit_price_usd': sale_price_usd,
+            'exchange_rate_buy': parcel['exchange_rate_buy'],
+            'exchange_rate_sell': exchange_rate,
             'parcel_source': parcel['date'],
             'optimization_phase': parcel.get('phase', 'UNKNOWN'),
-            'rba_conversion': True  # Flag indicating real RBA rates used
+            'rba_conversion': True,
+            # Additional USD fields for export
+            'buy_commission_usd': buy_commission_usd,
+            'sale_commission_usd': allocated_sale_commission_usd,
+            'cost_basis_usd': cost_basis_usd,
+            'net_proceeds_usd': net_proceeds_usd
         }
     
     def _fifo_selection(self, parcels: List[Dict], units_needed: float, sale_date: datetime) -> Tuple[List[Dict], List[Dict], float]:

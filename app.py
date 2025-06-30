@@ -289,6 +289,66 @@ def format_currency_aud(amount):
         # Fallback for any formatting issues
         return f"${float(amount):.1f}" if amount is not None else "$0.0"
 
+def format_cgt_data_for_export(cgt_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Format CGT DataFrame for user-friendly CSV export with custom columns and sorting.
+    
+    Args:
+        cgt_df: Raw CGT calculation DataFrame
+        
+    Returns:
+        Formatted DataFrame with user-specified columns
+    """
+    if len(cgt_df) == 0:
+        return pd.DataFrame()
+    
+    # Create new DataFrame with only the columns user wants, in specified order
+    export_df = pd.DataFrame()
+    
+    # 1. Symbol
+    export_df['Symbol'] = cgt_df['symbol']
+    
+    # 2. Date of sale (DD/MM/YYYY format)
+    export_df['Date of Sale'] = pd.to_datetime(cgt_df['sale_date']).dt.strftime('%d/%m/%Y')
+    
+    # 3. Units sold
+    export_df['Units Sold'] = cgt_df['units_sold'].round(2)
+    
+    # 4. Price sold USD
+    export_df['Price Sold USD'] = cgt_df['sale_unit_price_usd'].round(2)
+    
+    # 5. Commissions sale (USD)
+    export_df['Commissions Sale'] = cgt_df['sale_commission_usd'].round(2)
+    
+    # 6. Commissions buy (USD)
+    export_df['Commissions Buy'] = cgt_df['buy_commission_usd'].round(2)
+    
+    # 7. Total proceedings in USD (net proceeds)
+    export_df['Total Proceedings USD'] = cgt_df['net_proceeds_usd'].round(2)
+    
+    # 8. Total cost in USD (including commission)
+    export_df['Total Cost USD'] = cgt_df['cost_basis_usd'].round(2)
+    
+    # 9. Sale exchange rate
+    export_df['Sale Exchange Rate'] = cgt_df['exchange_rate_sell'].round(4)
+    
+    # 10. Purchase exchange rate
+    export_df['Purchase Exchange Rate'] = cgt_df['exchange_rate_buy'].round(4)
+    
+    # 11. 12 months discount (Yes/No)
+    export_df['12 Months Discount'] = cgt_df['is_long_term'].map({True: 'Yes', False: 'No'})
+    
+    # 12. Capital gains (in AUD)
+    export_df['Capital Gains'] = cgt_df['capital_gain_aud'].round(2)
+    
+    # Sort by Symbol (alphabetically), then by Date of Sale
+    export_df = export_df.sort_values(['Symbol', 'Date of Sale'], ascending=[True, True])
+    
+    # Reset index to get clean row numbers
+    export_df = export_df.reset_index(drop=True)
+    
+    return export_df
+
 
 # ENHANCED ERROR HANDLING (Optional addition)
 def show_results_with_error_handling():
@@ -328,6 +388,157 @@ def save_uploaded_files(uploaded_files):
             return None
     
     return temp_file_paths
+
+def preview_fy24_25_sales(uploaded_files):
+    """Preview FY24-25 sale events without full CGT calculation."""
+    
+    # Create progress container
+    progress_container = st.container()
+    
+    with progress_container:
+        st.header("🔍 Preview FY24-25 Sale Events")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+    
+    try:
+        # Step 1: Save files
+        status_text.text("💾 Saving uploaded files...")
+        progress_bar.progress(30)
+        
+        temp_file_paths = save_uploaded_files(uploaded_files)
+        if not temp_file_paths:
+            st.error("❌ Failed to save uploaded files")
+            return None
+        
+        # Step 2: Extract FY24-25 sales only
+        status_text.text("📊 Extracting FY24-25 sale events...")
+        progress_bar.progress(80)
+        
+        cost_basis_dict, fy24_25_sales, csv_warnings, csv_logs = process_statement_csv(temp_file_paths)
+        
+        # Step 3: Clean up temp files
+        for temp_path in temp_file_paths:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        
+        # Step 4: Complete
+        status_text.text("✅ Preview ready!")
+        progress_bar.progress(100)
+        
+        return fy24_25_sales, csv_warnings
+        
+    except Exception as e:
+        # Clean up temp files on error
+        if 'temp_file_paths' in locals():
+            for temp_path in temp_file_paths:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+        
+        st.error(f"❌ Preview failed: {str(e)}")
+        return None
+
+def display_sales_preview(fy24_25_sales, warnings=None):
+    """Display the FY24-25 sales preview table and calculate button."""
+    
+    st.markdown("---")
+    st.header("📊 FY24-25 Sale Events Preview")
+    
+    if len(fy24_25_sales) == 0:
+        st.warning("⚠️ No sale events found in FY24-25 period (July 1, 2024 - June 30, 2025)")
+        return
+    
+    # Display summary
+    st.success(f"✅ Found {len(fy24_25_sales)} sale events in FY24-25 period")
+    
+    
+    # Display the sales table
+    st.write("These are the sale transactions that will be used for CGT calculation:")
+    
+    # Format the dataframe for display with error handling
+    try:
+        display_df = fy24_25_sales.copy()
+        
+        # Keep only the specified columns: Symbol, units sold, price USD, date, commission
+        desired_columns = []
+        column_mapping = {
+            'Symbol': 'Symbol',
+            'Quantity': 'Units Sold', 
+            'Price (USD)': 'Price USD',  # Updated to match CSV processor output
+            'Commission (USD)': 'Commission USD',  # Updated to match CSV processor output
+            'Trade Date': 'Date'
+        }
+        
+        missing_columns = []
+        for original_col, display_name in column_mapping.items():
+            if original_col in display_df.columns:
+                desired_columns.append(original_col)
+            else:
+                missing_columns.append(original_col)
+        
+        if missing_columns:
+            st.info(f"ℹ️ Some optional columns not found: {', '.join(missing_columns)}")
+        
+        if desired_columns:
+            display_df = display_df[desired_columns]
+            # Rename columns for better display
+            display_df = display_df.rename(columns=column_mapping)
+        else:
+            st.error("❌ No expected columns found in the sales data")
+            return
+            
+    except Exception as e:
+        st.error(f"❌ Error preparing sales data for display: {str(e)}")
+        return
+    
+    # Format dates for better display with error handling
+    if 'Date' in display_df.columns:
+        try:
+            display_df['Date'] = pd.to_datetime(display_df['Date'], errors='coerce').dt.date
+            # Check if any dates couldn't be parsed
+            null_dates = display_df['Date'].isnull().sum()
+            if null_dates > 0:
+                st.warning(f"⚠️ {null_dates} date(s) could not be parsed and will show as blank")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting dates: {str(e)}")
+            # Keep original values if formatting fails
+            pass
+    
+    # Format numerical columns with error handling
+    if 'Price' in display_df.columns:
+        try:
+            display_df['Price'] = display_df['Price'].apply(lambda x: f"${x:.2f}" if pd.notna(x) and isinstance(x, (int, float)) else "N/A")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting prices: {str(e)}")
+    
+    if 'Total Value' in display_df.columns:
+        try:
+            display_df['Total Value'] = display_df['Total Value'].apply(lambda x: f"${x:,.2f}" if pd.notna(x) and isinstance(x, (int, float)) else "N/A")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting total values: {str(e)}")
+    
+    # Display the table
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Show warnings if any
+    if warnings:
+        with st.expander(f"⚠️ Processing Warnings ({len(warnings)})", expanded=False):
+            for warning in warnings:
+                st.warning(warning)
+    
+    # Calculate button
+    st.markdown("---")
+    st.subheader("🚀 Ready to Calculate?")
+    st.write("Review the sale events above. When ready, click below to calculate your CGT liability:")
+    
+    if st.button("🧮 Calculate CGT", type="primary", use_container_width=True):
+        # Store the preview data and trigger full calculation
+        st.session_state['preview_completed'] = True
+        st.session_state['fy24_25_sales_preview'] = fy24_25_sales
+        st.rerun()
 
 def preview_uploaded_files(uploaded_files):
     """Display preview information for uploaded files."""
@@ -507,11 +718,29 @@ def main():
         
         st.markdown("---")
         
-        # Process button
-        if st.button("🚀 Process All Files", type="primary", use_container_width=True):
+        # Step 2: Preview or Process buttons
+        if 'preview_sales' not in st.session_state:
+            # Show preview button first
+            if st.button("🔍 Preview FY24-25 Sales", type="primary", use_container_width=True):
+                result = preview_fy24_25_sales(uploaded_files)
+                if result:
+                    fy24_25_sales, warnings = result
+                    st.session_state['preview_sales'] = fy24_25_sales
+                    st.session_state['preview_warnings'] = warnings
+                    st.rerun()
+        
+        # Step 3: Show preview if available
+        if 'preview_sales' in st.session_state and not st.session_state.get('preview_completed', False):
+            display_sales_preview(
+                st.session_state['preview_sales'], 
+                st.session_state.get('preview_warnings', [])
+            )
+        
+        # Step 4: Process full calculation if preview completed
+        if st.session_state.get('preview_completed', False) and 'cgt_results' not in st.session_state:
             process_multiple_files(uploaded_files)
     
-    # Step 2: Show Results (if available)
+    # Step 5: Show Results (if available)
     if 'cgt_results' in st.session_state:
         show_results()
 
@@ -749,36 +978,8 @@ def show_results():
                         
                         # Add explanatory text
                         st.caption("🔵 Blue = Purchase parcel portions • 🟢 Green = Long-term sales (>12 months) • 🔴 Red = Short-term sales (<12 months)")
-                        st.caption("📝 **Important:** Each dot shows a parcel portion, not a complete transaction. If you sold 113 units, you might see multiple dots (e.g., 93 + 20) if shares came from different purchase dates. The 'Original Transaction Summary' below shows the actual transaction totals. Hover on dots for parcel details.")
                     else:
                         st.warning("Could not create timeline for this symbol")
-        # Results table
-        st.subheader("📋 Detailed CGT Records")
-        
-        # Add some helpful info about the table
-        st.write("Each row represents a portion of a parcel sold, optimized for minimum tax liability.")
-        
-        # Show transaction summary by sale date
-        if len(cgt_df) > 0:
-            st.write("**Original Transaction Summary:**")
-            transaction_summary = cgt_df.groupby(['symbol', 'sale_date']).agg({
-                'units_sold': 'sum',
-                'sale_unit_price_usd': 'first'
-            }).reset_index()
-            
-            summary_text = []
-            for _, row in transaction_summary.iterrows():
-                sale_date = pd.to_datetime(row['sale_date']).strftime('%d %b %Y')
-                summary_text.append(f"• **{row['symbol']}**: {row['units_sold']:.0f} units @ ${row['sale_unit_price_usd']:.2f} on {sale_date}")
-            
-            for text in summary_text:
-                st.write(text)
-        
-        st.dataframe(
-            cgt_df,
-            use_container_width=True,
-            hide_index=True
-        )
         
         # Download section
         st.subheader("💾 Download Results")
@@ -795,26 +996,12 @@ def show_results():
         
         summary_data = {
             'Metric': [
-                'Files Processed',
-                'CGT Records Generated', 
                 'Total Capital Gain (AUD)',
-                'Total Taxable Gain (AUD)',
-                'CGT Discount Savings (AUD)',
-                'Long-term Holdings Count',
-                'Short-term Holdings Count',
-                'Processing Strategy',
-                'Processing Date'
+                'Total Taxable Gain/Loss (AUD)'
             ],
             'Value': [
-                len(processed_files),
-                len(cgt_df),
                 f"${total_gain:,.2f}",
-                f"${total_taxable:,.2f}", 
-                f"${cgt_discount_savings:,.2f}",
-                long_term_count,
-                len(cgt_df) - long_term_count,
-                'Tax-optimal selection',
-                processing_time.strftime('%Y-%m-%d %H:%M:%S') if processing_time else 'Unknown'
+                f"${total_taxable:,.2f}"
             ]
         }
         summary_df = pd.DataFrame(summary_data)
@@ -824,8 +1011,9 @@ def show_results():
         buffer = BytesIO()
         
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            # Sheet 1: Detailed CGT Records
-            cgt_df.to_excel(writer, sheet_name='CGT Records', index=False)
+            # Sheet 1: User-friendly CGT Records (formatted)
+            formatted_cgt_df = format_cgt_data_for_export(cgt_df)
+            formatted_cgt_df.to_excel(writer, sheet_name='CGT Records', index=False)
             
             # Sheet 2: Summary
             summary_df.to_excel(writer, sheet_name='Summary', index=False)
@@ -833,6 +1021,9 @@ def show_results():
             # Add processed files list to summary sheet
             files_df = pd.DataFrame({'Processed Files': processed_files})
             files_df.to_excel(writer, sheet_name='Summary', startrow=len(summary_df) + 3, index=False)
+            
+            # Sheet 3: Raw Technical Data (for debugging/reference)
+            cgt_df.to_excel(writer, sheet_name='Technical Data', index=False)
         
         excel_data = buffer.getvalue()
         
