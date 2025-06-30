@@ -18,7 +18,10 @@ st.set_page_config(
     page_title="CGT Calculator",
     page_icon="🧮",
     layout="wide",
-    initial_sidebar_state="expanded"  # This forces sidebar open by default
+    initial_sidebar_state="expanded",  # This forces sidebar open by default
+    theme={
+        "base": "light"
+    }
 )
 
 # Add src directory to path for backend imports
