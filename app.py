@@ -545,7 +545,7 @@ def preview_uploaded_files(uploaded_files):
     st.subheader("📋 File Preview")
     
     for i, uploaded_file in enumerate(uploaded_files, 1):
-        with st.expander(f"📄 File {i}: {uploaded_file.name}", expanded=True):
+        with st.expander(f"📄 File {i}: {uploaded_file.name}", expanded=False):
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -553,16 +553,33 @@ def preview_uploaded_files(uploaded_files):
                 st.write(f"**Type:** {uploaded_file.type}")
             
             try:
-                # Read first few rows to show structure
-                df_preview = pd.read_csv(uploaded_file, nrows=5)
+                # Read full file to show complete structure
+                df_preview = pd.read_csv(uploaded_file)
                 
                 with col2:
+                    st.write(f"**Total Rows:** {len(df_preview):,}")
                     st.write(f"**Columns:** {len(df_preview.columns)}")
-                    st.write(f"**Detected columns:** {', '.join(df_preview.columns[:3])}...")
                 
-                # Show preview table
-                st.write("**Preview (first 5 rows):**")
-                st.dataframe(df_preview, use_container_width=True)
+                with col3:
+                    # Show date range if we can detect date columns
+                    date_cols = [col for col in df_preview.columns if 'date' in col.lower() or 'time' in col.lower()]
+                    if date_cols:
+                        try:
+                            date_col = date_cols[0]
+                            dates = pd.to_datetime(df_preview[date_col], errors='coerce')
+                            valid_dates = dates.dropna()
+                            if len(valid_dates) > 0:
+                                st.write(f"**Date Range:** {valid_dates.min().strftime('%Y-%m-%d')} to {valid_dates.max().strftime('%Y-%m-%d')}")
+                        except:
+                            pass
+                
+                # Show all column names
+                st.write("**All Columns:**")
+                st.write(", ".join(df_preview.columns))
+                
+                # Show expanded preview table (first 10 rows)
+                st.write("**Preview (first 10 rows):**")
+                st.dataframe(df_preview.head(10), use_container_width=True)
                 
                 # Reset file pointer for later processing
                 uploaded_file.seek(0)
@@ -701,7 +718,7 @@ def main():
     st.success("""
     📋 **What You Need:**
 
-    ✅ **FY 2024-25 complete transactions with Symbol, Date, Buy/Sell, Quantity, Price (required)
+    ✅ **FY 2024-25 transactions** with Symbol, Date, Buy/Sell, Quantity, Price (required)
 
     ✅ **Previous years complete transactions** (optional, great if you bought shares in previous years and you sold them this year)
 
@@ -879,10 +896,11 @@ def show_results():
                 "Estimated Tax You'll Pay",
                 options=[
                     "Select your income bracket",
-                    "$18,201 - $45,000 (19%)",
-                    "$45,001 - $120,000 (32.5%)",
-                    "$120,001 - $180,000 (37%)",
-                    "$180,001+ (45%)"
+                    "$0 - $18,200 (0%)",
+                    "$18,201 - $45,000 (16%)",
+                    "$45,001 - $135,000 (30%)",
+                    "$135,001 - $190,000 (37%)",
+                    "$190,001+ (45%)"
                 ],
                 key="tax_bracket",
                 help="Capital gains are added to your other income. Select the bracket that includes your total income (salary + capital gains)."
@@ -891,10 +909,12 @@ def show_results():
             # Calculate and display estimated tax
             if tax_bracket != "Select your income bracket":
                 # Extract tax rate from selection
-                if "19%" in tax_bracket:
-                    rate = 0.19
-                elif "32.5%" in tax_bracket:
-                    rate = 0.325
+                if "0%" in tax_bracket:
+                    rate = 0.0
+                elif "16%" in tax_bracket:
+                    rate = 0.16
+                elif "30%" in tax_bracket:
+                    rate = 0.30
                 elif "37%" in tax_bracket:
                     rate = 0.37
                 elif "45%" in tax_bracket:
@@ -969,7 +989,7 @@ def show_results():
                 short_term_count = transaction_count - long_term_count
                 
                 # Create expandable section for each symbol
-                with st.expander(f"**{symbol}** - {transaction_count} Transaction{'s' if transaction_count != 1 else ''} (Capital gain to report ${total_capital_gain:.0f} AUD)", expanded=True):
+                with st.expander(f"**{symbol}** - {transaction_count} Transaction{'s' if transaction_count != 1 else ''} (Capital gain to report ${total_capital_gain:.0f} AUD)", expanded=False):
                     
                     # Create and display timeline
                     timeline_fig = create_symbol_timeline(symbol_records)
@@ -981,6 +1001,28 @@ def show_results():
                     else:
                         st.warning("Could not create timeline for this symbol")
         
+        # CSV Preview section
+        st.subheader("👀 Preview CSV Report")
+        
+        # Generate formatted CSV data for preview
+        csv_preview_df = format_cgt_data_for_export(cgt_df)
+        
+        if len(csv_preview_df) > 0:
+            st.write("Preview of your CGT report (first 5 rows):")
+            preview_rows = min(5, len(csv_preview_df))
+            st.dataframe(
+                csv_preview_df.head(preview_rows), 
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if len(csv_preview_df) > 5:
+                st.caption(f"Showing {preview_rows} of {len(csv_preview_df)} total rows")
+            else:
+                st.caption(f"Showing all {len(csv_preview_df)} rows")
+        else:
+            st.warning("No data available for preview")
+
         # Download section
         st.subheader("💾 Download Results")
         
