@@ -329,6 +329,157 @@ def save_uploaded_files(uploaded_files):
     
     return temp_file_paths
 
+def preview_fy24_25_sales(uploaded_files):
+    """Preview FY24-25 sale events without full CGT calculation."""
+    
+    # Create progress container
+    progress_container = st.container()
+    
+    with progress_container:
+        st.header("🔍 Preview FY24-25 Sale Events")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+    
+    try:
+        # Step 1: Save files
+        status_text.text("💾 Saving uploaded files...")
+        progress_bar.progress(30)
+        
+        temp_file_paths = save_uploaded_files(uploaded_files)
+        if not temp_file_paths:
+            st.error("❌ Failed to save uploaded files")
+            return None
+        
+        # Step 2: Extract FY24-25 sales only
+        status_text.text("📊 Extracting FY24-25 sale events...")
+        progress_bar.progress(80)
+        
+        cost_basis_dict, fy24_25_sales, csv_warnings, csv_logs = process_statement_csv(temp_file_paths)
+        
+        # Step 3: Clean up temp files
+        for temp_path in temp_file_paths:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        
+        # Step 4: Complete
+        status_text.text("✅ Preview ready!")
+        progress_bar.progress(100)
+        
+        return fy24_25_sales, csv_warnings
+        
+    except Exception as e:
+        # Clean up temp files on error
+        if 'temp_file_paths' in locals():
+            for temp_path in temp_file_paths:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+        
+        st.error(f"❌ Preview failed: {str(e)}")
+        return None
+
+def display_sales_preview(fy24_25_sales, warnings=None):
+    """Display the FY24-25 sales preview table and calculate button."""
+    
+    st.markdown("---")
+    st.header("📊 FY24-25 Sale Events Preview")
+    
+    if len(fy24_25_sales) == 0:
+        st.warning("⚠️ No sale events found in FY24-25 period (July 1, 2024 - June 30, 2025)")
+        return
+    
+    # Display summary
+    st.success(f"✅ Found {len(fy24_25_sales)} sale events in FY24-25 period")
+    
+    
+    # Display the sales table
+    st.write("These are the sale transactions that will be used for CGT calculation:")
+    
+    # Format the dataframe for display with error handling
+    try:
+        display_df = fy24_25_sales.copy()
+        
+        # Keep only the specified columns: Symbol, units sold, price USD, date, commission
+        desired_columns = []
+        column_mapping = {
+            'Symbol': 'Symbol',
+            'Quantity': 'Units Sold', 
+            'Price (USD)': 'Price USD',  # Updated to match CSV processor output
+            'Commission (USD)': 'Commission USD',  # Updated to match CSV processor output
+            'Trade Date': 'Date'
+        }
+        
+        missing_columns = []
+        for original_col, display_name in column_mapping.items():
+            if original_col in display_df.columns:
+                desired_columns.append(original_col)
+            else:
+                missing_columns.append(original_col)
+        
+        if missing_columns:
+            st.info(f"ℹ️ Some optional columns not found: {', '.join(missing_columns)}")
+        
+        if desired_columns:
+            display_df = display_df[desired_columns]
+            # Rename columns for better display
+            display_df = display_df.rename(columns=column_mapping)
+        else:
+            st.error("❌ No expected columns found in the sales data")
+            return
+            
+    except Exception as e:
+        st.error(f"❌ Error preparing sales data for display: {str(e)}")
+        return
+    
+    # Format dates for better display with error handling
+    if 'Date' in display_df.columns:
+        try:
+            display_df['Date'] = pd.to_datetime(display_df['Date'], errors='coerce').dt.date
+            # Check if any dates couldn't be parsed
+            null_dates = display_df['Date'].isnull().sum()
+            if null_dates > 0:
+                st.warning(f"⚠️ {null_dates} date(s) could not be parsed and will show as blank")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting dates: {str(e)}")
+            # Keep original values if formatting fails
+            pass
+    
+    # Format numerical columns with error handling
+    if 'Price' in display_df.columns:
+        try:
+            display_df['Price'] = display_df['Price'].apply(lambda x: f"${x:.2f}" if pd.notna(x) and isinstance(x, (int, float)) else "N/A")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting prices: {str(e)}")
+    
+    if 'Total Value' in display_df.columns:
+        try:
+            display_df['Total Value'] = display_df['Total Value'].apply(lambda x: f"${x:,.2f}" if pd.notna(x) and isinstance(x, (int, float)) else "N/A")
+        except Exception as e:
+            st.warning(f"⚠️ Error formatting total values: {str(e)}")
+    
+    # Display the table
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Show warnings if any
+    if warnings:
+        with st.expander(f"⚠️ Processing Warnings ({len(warnings)})", expanded=False):
+            for warning in warnings:
+                st.warning(warning)
+    
+    # Calculate button
+    st.markdown("---")
+    st.subheader("🚀 Ready to Calculate?")
+    st.write("Review the sale events above. When ready, click below to calculate your CGT liability:")
+    
+    if st.button("🧮 Calculate CGT", type="primary", use_container_width=True):
+        # Store the preview data and trigger full calculation
+        st.session_state['preview_completed'] = True
+        st.session_state['fy24_25_sales_preview'] = fy24_25_sales
+        st.rerun()
+
 def preview_uploaded_files(uploaded_files):
     """Display preview information for uploaded files."""
     st.subheader("📋 File Preview")
@@ -507,11 +658,29 @@ def main():
         
         st.markdown("---")
         
-        # Process button
-        if st.button("🚀 Process All Files", type="primary", use_container_width=True):
+        # Step 2: Preview or Process buttons
+        if 'preview_sales' not in st.session_state:
+            # Show preview button first
+            if st.button("🔍 Preview FY24-25 Sales", type="primary", use_container_width=True):
+                result = preview_fy24_25_sales(uploaded_files)
+                if result:
+                    fy24_25_sales, warnings = result
+                    st.session_state['preview_sales'] = fy24_25_sales
+                    st.session_state['preview_warnings'] = warnings
+                    st.rerun()
+        
+        # Step 3: Show preview if available
+        if 'preview_sales' in st.session_state and not st.session_state.get('preview_completed', False):
+            display_sales_preview(
+                st.session_state['preview_sales'], 
+                st.session_state.get('preview_warnings', [])
+            )
+        
+        # Step 4: Process full calculation if preview completed
+        if st.session_state.get('preview_completed', False) and 'cgt_results' not in st.session_state:
             process_multiple_files(uploaded_files)
     
-    # Step 2: Show Results (if available)
+    # Step 5: Show Results (if available)
     if 'cgt_results' in st.session_state:
         show_results()
 
