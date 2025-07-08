@@ -658,12 +658,6 @@ def sidebar_feedback():
 
 def main():
     """Main Streamlit application."""
-    # Page configuration
-    st.set_page_config(
-        page_title="CGT Calculator",
-        page_icon="🧮",
-        layout="wide"
-    )
     
     # Google Analytics initialization with cross-domain tracking
     st.components.v1.html("""
