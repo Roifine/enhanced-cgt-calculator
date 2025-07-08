@@ -665,6 +665,29 @@ def main():
         layout="wide"
     )
     
+    # Google Analytics initialization with cross-domain tracking
+    st.components.v1.html("""
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPFCSTT5L0"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-GPFCSTT5L0', {
+        // ✅ ADD CROSS-DOMAIN TRACKING
+        'linker': {
+            'domains': ['auscgtcalculator.com', 'enhanced-cgt-calculator-tt4ky7nudjf7mctexxxaff.streamlit.app']
+        },
+        'allow_linker': true,
+        'cookie_domain': 'auto',
+        'cookie_flags': 'SameSite=None;Secure'
+    });
+
+    console.log('✅ Google Analytics loaded with cross-domain tracking');
+    </script>
+    """, height=0)
+    
     # feedback form in sidebar
     sidebar_feedback()
     
