@@ -42,10 +42,10 @@ def safe_currency_to_float(value):
     # Last resort
     return float(value)
 
-def safe_commission(value, default_missing=30.0, min_reasonable=0.0):
+def safe_commission(value, default_missing=29.0, min_reasonable=0.0):
     """Handle commission with reasonable defaults"""
     if value is None or pd.isna(value) or str(value).strip() == "":
-        return default_missing  # Missing data → $30
+        return default_missing  # Missing data → $29
     
     try:
         num_value = float(value)

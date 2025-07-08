@@ -181,7 +181,7 @@ class StatementProcessor:
             
             # Add commission column if missing (with default value)
             if 'commission' not in df.columns:
-                default_commission = 0.0  # Default to $0 commission
+                default_commission = 29.0  # Default to $29 commission
                 df['commission'] = default_commission
                 self._log(f"   ✅ Added default commission column: ${default_commission}")
             
