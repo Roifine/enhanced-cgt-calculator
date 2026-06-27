@@ -15,7 +15,7 @@ import warnings
 import traceback
 
 # Import the tax optimizer and RBA converter with absolute imports
-from tax_optimizer import optimize_sale_for_cgt
+from tax_optimizer import optimize_sale_for_cgt, _is_long_term
 from currency_converter import RBAExchangeRateConverter
 
 def safe_currency_to_float(value):
@@ -405,7 +405,7 @@ class EnhancedCGTCalculatorWithRBA:
                     'date': parcel['date'],
                     'purchase_date': purchase_date,
                     'days_held': days_held,
-                    'is_long_term': days_held >= 365,
+                    'is_long_term': _is_long_term(purchase_date, sale_date),
                     'cost_per_unit': cost_per_unit_aud,  # For backward compatibility
                     'cost_per_unit_aud': cost_per_unit_aud,
                     'total_cost': total_cost_aud,  # For backward compatibility

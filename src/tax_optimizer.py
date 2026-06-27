@@ -10,6 +10,20 @@ from typing import List, Dict, Tuple, Optional
 import copy
 
 
+def _is_long_term(purchase_date: datetime, sale_date: datetime) -> bool:
+    """
+    True if the holding qualifies for the 50% CGT discount.
+    Australian law: sale must be STRICTLY MORE than 12 calendar months after purchase.
+    Buying on 2022-01-01 and selling on 2023-01-01 = exactly 12 months = NOT eligible.
+    """
+    try:
+        twelve_months_after = purchase_date.replace(year=purchase_date.year + 1)
+    except ValueError:
+        # Feb 29 in a leap year has no equivalent next year - use Feb 28
+        twelve_months_after = purchase_date.replace(year=purchase_date.year + 1, day=28)
+    return sale_date > twelve_months_after
+
+
 class ParcelOptimizer:
     """
     Australian CGT tax optimization engine - Updated for AUD-focused structure.
@@ -72,26 +86,27 @@ class ParcelOptimizer:
                 units = parcel['units']
                 price_aud, commission_aud, cost_per_unit_aud, total_cost_aud = self._extract_parcel_costs(parcel)
                 
+                is_lt = _is_long_term(purchase_date, sale_date)
                 enriched_parcel = {
                     'original_index': i,
                     'units': units,
                     'price_aud': price_aud,
                     'commission_aud': commission_aud,
                     'price_usd': parcel.get('price_usd', price_aud),              # ADD THIS
-                    'commission_usd': parcel.get('commission_usd', commission_aud),  # ADD THIS  
+                    'commission_usd': parcel.get('commission_usd', commission_aud),  # ADD THIS
                     'exchange_rate_buy': parcel['exchange_rate_buy'],    # ADD THIS
                     'date': parcel['date'],
                     'purchase_date': purchase_date,
                     'days_held': days_held,
-                    'is_long_term': days_held >= 365,
+                    'is_long_term': is_lt,
                     'cost_per_unit_aud': cost_per_unit_aud,
                     'total_cost_aud': total_cost_aud
                 }
-                
+
                 enriched_parcels.append(enriched_parcel)
-                
+
                 self._log(f"   📦 Parcel {i}: {units} units @ ${cost_per_unit_aud:.2f}/unit AUD, "
-                         f"{days_held} days ({'LT' if days_held >= 365 else 'ST'})")
+                         f"{days_held} days ({'LT' if is_lt else 'ST'})")
                 
             except Exception as e:
                 self._log(f"⚠️ Error processing parcel {i}: {e}")
