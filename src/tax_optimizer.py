@@ -39,23 +39,30 @@ class ParcelOptimizer:
         self.processing_log = []
     
     def optimize_parcel_selection(
-        self, 
-        cost_basis_parcels: List[Dict], 
-        units_to_sell: float, 
-        sale_date: datetime
+        self,
+        cost_basis_parcels: List[Dict],
+        units_to_sell: float,
+        sale_date: datetime,
+        sale_price_per_unit_aud: Optional[float] = None
     ) -> Tuple[List[Dict], List[Dict], float]:
         """
         Select optimal parcels for Australian CGT tax efficiency.
-        
-        Strategy:
-        1. Long-term holdings first (>12 months = 50% CGT discount)
-        2. Within category: highest cost basis first (minimize gains)
-        
+
+        Strategy (in priority order):
+        1. Loss-making parcels first (losses offset gains dollar-for-dollar)
+        2. Long-term gain parcels (>12 months = 50% CGT discount)
+        3. Short-term gain parcels (worst case: full tax rate)
+        Within each phase: highest cost basis first to minimise gains.
+
+        If sale_price_per_unit_aud is None, falls back to the prior behaviour
+        (long-term first, then short-term) without loss/gain classification.
+
         Args:
             cost_basis_parcels: List of parcel dictionaries (AUD-focused or legacy format)
             units_to_sell: Number of units being sold
             sale_date: Date of the sale
-            
+            sale_price_per_unit_aud: AUD price per unit on sale date (enables loss detection)
+
         Returns:
             (selected_parcels, updated_cost_basis, remaining_units_needed)
         """
@@ -116,32 +123,76 @@ class ParcelOptimizer:
             self._log("❌ No valid parcels after enrichment")
             return [], [], units_to_sell
         
-        # Separate long-term and short-term parcels
-        long_term_parcels = [p for p in enriched_parcels if p['is_long_term']]
-        short_term_parcels = [p for p in enriched_parcels if not p['is_long_term']]
-        
-        # Sort by cost per unit AUD (highest first to minimize gains)
-        long_term_parcels.sort(key=lambda x: x['cost_per_unit_aud'], reverse=True)
-        short_term_parcels.sort(key=lambda x: x['cost_per_unit_aud'], reverse=True)
-        
-        self._log(f"📊 Available: {len(long_term_parcels)} long-term, {len(short_term_parcels)} short-term")
-        
-        # Select parcels using tax-optimal strategy
-        selected_parcels = []
-        remaining_units = units_to_sell
-        
-        # Phase 1: Use long-term parcels first (50% CGT discount)
-        self._log("🔄 Phase 1: Selecting long-term parcels...")
-        remaining_units = self._consume_parcels(
-            long_term_parcels, remaining_units, selected_parcels, "LONG-TERM"
-        )
-        
-        # Phase 2: Use short-term parcels if needed
-        if remaining_units > 0:
-            self._log("🔄 Phase 2: Selecting short-term parcels...")
-            remaining_units = self._consume_parcels(
-                short_term_parcels, remaining_units, selected_parcels, "SHORT-TERM"
+        # Classify parcels based on whether they would produce a gain or loss at
+        # the current sale price.  If no sale price is provided we fall back to
+        # the legacy two-phase behaviour (long-term first, then short-term).
+        if sale_price_per_unit_aud is not None:
+            loss_parcels = [
+                p for p in enriched_parcels
+                if p['cost_per_unit_aud'] > sale_price_per_unit_aud
+            ]
+            lt_gain_parcels = [
+                p for p in enriched_parcels
+                if p['cost_per_unit_aud'] <= sale_price_per_unit_aud and p['is_long_term']
+            ]
+            st_gain_parcels = [
+                p for p in enriched_parcels
+                if p['cost_per_unit_aud'] <= sale_price_per_unit_aud and not p['is_long_term']
+            ]
+
+            # Within each group: highest cost first (smallest net gain / biggest loss)
+            for group in (loss_parcels, lt_gain_parcels, st_gain_parcels):
+                group.sort(key=lambda x: x['cost_per_unit_aud'], reverse=True)
+
+            self._log(
+                f"📊 Available: {len(loss_parcels)} loss, "
+                f"{len(lt_gain_parcels)} long-term gain, "
+                f"{len(st_gain_parcels)} short-term gain"
             )
+
+            selected_parcels = []
+            remaining_units = units_to_sell
+
+            self._log("🔄 Phase 1: Selecting loss-making parcels...")
+            remaining_units = self._consume_parcels(
+                loss_parcels, remaining_units, selected_parcels, "LOSS"
+            )
+
+            if remaining_units > 0:
+                self._log("🔄 Phase 2: Selecting long-term gain parcels...")
+                remaining_units = self._consume_parcels(
+                    lt_gain_parcels, remaining_units, selected_parcels, "LONG-TERM-GAIN"
+                )
+
+            if remaining_units > 0:
+                self._log("🔄 Phase 3: Selecting short-term gain parcels...")
+                remaining_units = self._consume_parcels(
+                    st_gain_parcels, remaining_units, selected_parcels, "SHORT-TERM-GAIN"
+                )
+
+        else:
+            # Legacy two-phase behaviour (no sale price provided)
+            long_term_parcels = [p for p in enriched_parcels if p['is_long_term']]
+            short_term_parcels = [p for p in enriched_parcels if not p['is_long_term']]
+
+            long_term_parcels.sort(key=lambda x: x['cost_per_unit_aud'], reverse=True)
+            short_term_parcels.sort(key=lambda x: x['cost_per_unit_aud'], reverse=True)
+
+            self._log(f"📊 Available: {len(long_term_parcels)} long-term, {len(short_term_parcels)} short-term")
+
+            selected_parcels = []
+            remaining_units = units_to_sell
+
+            self._log("🔄 Phase 1: Selecting long-term parcels...")
+            remaining_units = self._consume_parcels(
+                long_term_parcels, remaining_units, selected_parcels, "LONG-TERM"
+            )
+
+            if remaining_units > 0:
+                self._log("🔄 Phase 2: Selecting short-term parcels...")
+                remaining_units = self._consume_parcels(
+                    short_term_parcels, remaining_units, selected_parcels, "SHORT-TERM"
+                )
         
         # Create updated cost basis (remove consumed units)
         updated_cost_basis = self._create_updated_cost_basis(
@@ -375,25 +426,27 @@ class ParcelOptimizer:
 
 
 def optimize_sale_for_cgt(
-    cost_basis_parcels: List[Dict], 
-    units_to_sell: float, 
-    sale_date: datetime
+    cost_basis_parcels: List[Dict],
+    units_to_sell: float,
+    sale_date: datetime,
+    sale_price_per_unit_aud: Optional[float] = None
 ) -> Tuple[List[Dict], List[Dict], float, List[str]]:
     """
     Convenience function for Australian CGT optimization with AUD-focused structure.
-    
+
     Args:
         cost_basis_parcels: List of parcels (AUD-focused or legacy format)
         units_to_sell: Number of units to sell
         sale_date: Date of sale
-        
+        sale_price_per_unit_aud: AUD price per unit (enables loss/gain classification)
+
     Returns:
         (selected_parcels, updated_cost_basis, units_still_needed, processing_log)
     """
-    
+
     optimizer = ParcelOptimizer()
     selected, updated, remaining = optimizer.optimize_parcel_selection(
-        cost_basis_parcels, units_to_sell, sale_date
+        cost_basis_parcels, units_to_sell, sale_date, sale_price_per_unit_aud
     )
-    
+
     return selected, updated, remaining, optimizer.get_processing_log()

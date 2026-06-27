@@ -162,7 +162,7 @@ class EnhancedCGTCalculatorWithRBA:
                 # Use tax optimizer to select optimal parcels
                 if strategy == "tax_optimal":
                     selected_parcels, updated_parcels, units_remaining, optimizer_log = optimize_sale_for_cgt(
-                        available_parcels, units_sold, sale_date
+                        available_parcels, units_sold, sale_date, sale_price_aud
                     )
                     # Merge optimizer logs with main processing log
                     for log_entry in optimizer_log:
