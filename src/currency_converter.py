@@ -269,8 +269,6 @@ class RBAExchangeRateConverter:
                 'cost_per_unit_aud': aud_price + (aud_commission / units if units > 0 else 0),
                 'total_cost_aud': units * (aud_price + (aud_commission / units if units > 0 else 0))
             }
-            # ADD THIS DEBUG LINE RIGHT AFTER:
-            print(f"🔍 CURRENCY CONVERTER: Created aud_parcel with exchange_rate_buy = {aud_parcel['exchange_rate_buy']}")
             conversion_info = {
                 'price_conversion': price_info,
                 'commission_conversion': commission_info
