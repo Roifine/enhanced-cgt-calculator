@@ -8,89 +8,52 @@ import pandas as pd
 import json
 import sys
 import os
+import pytest
 
-# FIRST: Set up paths correctly
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)  # Go up from tests/ to project root
-src_dir = os.path.join(project_root, 'src')
+# Set up paths
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_current_dir)
+_src_dir = os.path.join(_project_root, 'src')
+_test_cost_basis_file = os.path.join(_project_root, 'data', 'test_cost_basis.json')
 
-# Add paths
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
-# THEN: Try to import (after paths are set up)
-try:
-    from cgt_calculator import calculate_enhanced_cgt_with_rba, safe_calculate_enhanced_cgt_with_rba
-    print("✅ Import successful")
-except ImportError as e:
-    print(f"❌ Import failed: {e}")
-    
-    # Debug: Show what's actually in the paths
-    print(f"Project root: {project_root}")
-    print(f"Files in project root: {os.listdir(project_root)}")
-    if os.path.exists(src_dir):
-        print(f"Files in src: {os.listdir(src_dir)}")
-    else:
-        print("❌ src directory doesn't exist")
-    
-    sys.exit(1)
+from cgt_calculator import calculate_enhanced_cgt_with_rba, safe_calculate_enhanced_cgt_with_rba
 
 # Rest of your test code goes here...
 def test_backward_compatibility():
-    """Test 1: Ensure existing functionality still works"""
-    
-    print("\n🧪 TEST 1: Backward Compatibility")
-    print("=" * 50)
-    
-    try:
-        # Load your test data (adjust paths as needed)
-        with open('test_cost_basis.json', 'r') as f:
-            cost_basis_dict = json.load(f)
-        
-        # Create sample sales data (or load your test sales CSV)
-        sales_data = [
-            {
-                'Symbol': 'AAPL',
-                'Trade Date': '2024-04-15',
-                'Type': 'SELL',
-                'Quantity': 100.0,
-                'Price (USD)': 170.00,
-                'Proceeds (USD)': 17000.0,
-                'Commission (USD)': 15.0
-            }
-        ]
-        sales_df = pd.DataFrame(sales_data)
-        sales_df['Trade Date'] = pd.to_datetime(sales_df['Trade Date'])
-        
-        print(f"📊 Test data: {len(sales_df)} sales, {len(cost_basis_dict)} symbols with cost basis")
-        
-        # Test original functionality (should return 4 values)
-        print("🔄 Testing original tax_optimal strategy...")
-        result = calculate_enhanced_cgt_with_rba(
-            sales_df, 
-            cost_basis_dict, 
-            strategy="tax_optimal"
-        )
-        
-        # Should return 4 values
-        if len(result) == 4:
-            cgt_df, updated_cost_basis, warnings, logs = result
-            print(f"✅ Original functionality works!")
-            print(f"   CGT records: {len(cgt_df)}")
-            print(f"   Warnings: {len(warnings)}")
-            print(f"   Total taxable gain: ${cgt_df['taxable_gain_aud'].sum():.2f} AUD")
-            return True
-        else:
-            print(f"❌ Expected 4 return values, got {len(result)}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Backward compatibility test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    """Ensure tax_optimal strategy returns the expected 4-tuple."""
+    if not os.path.exists(_test_cost_basis_file):
+        pytest.skip(f"test data not found: {_test_cost_basis_file}")
+
+    with open(_test_cost_basis_file, 'r') as f:
+        cost_basis_dict = json.load(f)
+
+    sales_data = [
+        {
+            'Symbol': 'AAPL',
+            'Trade Date': '2024-04-15',
+            'Type': 'SELL',
+            'Quantity': 100.0,
+            'Price (USD)': 170.00,
+            'Proceeds (USD)': 17000.0,
+            'Commission (USD)': 15.0
+        }
+    ]
+    sales_df = pd.DataFrame(sales_data)
+    sales_df['Trade Date'] = pd.to_datetime(sales_df['Trade Date'])
+
+    result = calculate_enhanced_cgt_with_rba(
+        sales_df, cost_basis_dict, strategy="tax_optimal"
+    )
+
+    assert len(result) == 4, f"Expected 4 return values, got {len(result)}"
+    cgt_df, updated_cost_basis, warnings, logs = result
+    assert isinstance(cgt_df, pd.DataFrame)
+    assert isinstance(warnings, list)
 
 def test_comparison_functionality():
     """Test 2: Test new comparison functionality"""

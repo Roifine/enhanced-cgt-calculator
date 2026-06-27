@@ -211,6 +211,68 @@ class TestParcelOptimizerSelection:
             "Highest cost parcel should be sold first to minimise short-term gain"
         )
 
+    def test_short_term_loss_beats_long_term_gain_with_sale_price(self):
+        """
+        When sale_price_per_unit_aud is provided, a SHORT-TERM LOSS parcel must be
+        selected BEFORE a LONG-TERM GAIN parcel.
+
+        Rationale: crystallising the loss reduces total taxable capital gains
+        dollar-for-dollar against other gains.  The long-term gain, even discounted
+        50%, still adds to taxable income - so it is cheaper to keep it unsold.
+
+        This is the scenario where the three-phase optimizer differs from the legacy
+        two-phase (long-term first) approach.
+        """
+        sale_date = datetime(2024, 6, 1)
+        # Short-term loss: bought 6 months ago at $200, sale price $150 => -$50/unit
+        parcel_st_loss = _make_parcel('2023-12-01', 100, 200.0)
+        # Long-term gain: bought 3 years ago at $100, sale price $150 => +$50/unit (50% discounted)
+        parcel_lt_gain = _make_parcel('2021-01-01', 100, 100.0)
+
+        sale_price_aud = 150.0
+
+        parcels = [parcel_lt_gain, parcel_st_loss]
+        selected, updated, remaining, _ = optimize_sale_for_cgt(
+            parcels, 100, sale_date, sale_price_per_unit_aud=sale_price_aud
+        )
+
+        assert remaining == 0
+        assert len(selected) == 1
+        assert selected[0]['date'] == '2023-12-01', (
+            "Short-term loss parcel must be sold first when sale price is provided; "
+            "crystallising a loss is always better than realising a taxable gain"
+        )
+
+    def test_three_phase_priority_full_scenario(self):
+        """
+        Full three-phase scenario with all three parcel types present.
+
+        Sale price = AUD $150/unit.
+        - Loss parcel:       cost $200, short-term  -> loss $50/unit (sell FIRST)
+        - Long-term gain:    cost $100, long-term   -> gain $50/unit (sell SECOND)
+        - Short-term gain:   cost $80,  short-term  -> gain $70/unit (sell LAST / avoid)
+
+        Sell 2 parcels (200 units), verify loss + LT-gain selected, ST-gain skipped.
+        """
+        sale_date = datetime(2024, 6, 1)
+        parcel_lt_gain = _make_parcel('2021-01-01', 100, 100.0)
+        parcel_st_gain = _make_parcel('2023-12-01', 100, 80.0)
+        parcel_loss = _make_parcel('2023-06-01', 100, 200.0)
+
+        sale_price_aud = 150.0
+        parcels = [parcel_lt_gain, parcel_st_gain, parcel_loss]
+        selected, updated, remaining, _ = optimize_sale_for_cgt(
+            parcels, 200, sale_date, sale_price_per_unit_aud=sale_price_aud
+        )
+
+        assert remaining == 0
+        selected_dates = {p['date'] for p in selected}
+        assert '2023-06-01' in selected_dates, "Loss parcel must be selected"
+        assert '2021-01-01' in selected_dates, "Long-term gain parcel must be selected"
+        assert '2023-12-01' not in selected_dates, (
+            "Short-term gain parcel must NOT be selected (worst tax outcome)"
+        )
+
 
 class TestCGTDiscountInCalculation:
     """
