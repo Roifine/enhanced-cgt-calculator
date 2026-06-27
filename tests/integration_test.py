@@ -6,11 +6,18 @@ Validates professional RBA exchange rate integration with Enhanced CGT System
 
 import pandas as pd
 import json
+import os
+import sys
 from datetime import datetime
 
-# Import our enhanced modules with RBA integration
-from rba_converter import RBAExchangeRateConverter
-from enhanced_cgt_with_rba import EnhancedCGTCalculatorWithRBA, calculate_enhanced_cgt_with_rba
+# Set up paths for src imports
+_tests_dir = os.path.dirname(os.path.abspath(__file__))
+_src_dir = os.path.join(os.path.dirname(_tests_dir), 'src')
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+from currency_converter import RBAExchangeRateConverter
+from cgt_calculator import EnhancedCGTCalculatorWithRBA, calculate_enhanced_cgt_with_rba
 
 
 def test_rba_converter_standalone():

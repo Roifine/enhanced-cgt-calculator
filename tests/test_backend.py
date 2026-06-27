@@ -157,8 +157,8 @@ def test_comparison_functionality():
         traceback.print_exc()
         return False, None
 
-def test_comparison_analysis(comparison_data):
-    """Test 3: Validate comparison data makes sense"""
+def _validate_comparison_analysis(comparison_data):
+    """Validate comparison data makes sense - called by test_comparison_functionality, not collected directly by pytest."""
     
     print("\n🧪 TEST 3: Comparison Data Analysis")
     print("=" * 50)
@@ -265,7 +265,7 @@ def run_comprehensive_backend_test():
     
     # Test 3: Comparison data analysis (only if Test 2 passed)
     if comparison_success and comparison_data:
-        test_results.append(("Comparison Data Analysis", test_comparison_analysis(comparison_data)))
+        test_results.append(("Comparison Data Analysis", _validate_comparison_analysis(comparison_data)))
     
     # Test 4: Error handling
     test_results.append(("Error Handling", test_error_handling()))
